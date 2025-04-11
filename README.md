@@ -1,6 +1,8 @@
 # Backend AI for counting vehicle from video streaming 
 
-## Cài đặt và Chạy
+## Note
+Có thể là máy chưa cài đặt hoặc sử dụng GPU nên nó chậm hơn, nhưng chắc ko sao hehe tại yolov khá oke với CPU rồi
+## Cài đặt và Chạy 
 
 1.  **Clone Repository:**
     ```bash
@@ -58,12 +60,13 @@
 *   **`POST /api/config/counting-line`**
     *   **Mô tả:** Thiết lập tọa độ cho đường kẻ dùng để đếm phương tiện.
     *   **Request Body (JSON):**
+        *   `start`: List hoặc Tuple chứa tọa độ điểm bắt đầu `[x1, y1]`.
+        *   `end`: List hoặc Tuple chứa tọa độ điểm kết thúc `[x2, y2]`.
         ```json
         {
-          "start": [x1, y1], // Tọa độ điểm bắt đầu (List hoặc Tuple)
-          "end": [x2, y2]   // Tọa độ điểm kết thúc (List hoặc Tuple)
+          "start": [0, 360],
+          "end": [1280, 360]
         }
-        // Ví dụ: {"start": [0, 360], "end": [1280, 360]}
         ```
     *   **Phản hồi thành công (200 OK):**
         ```json
@@ -83,7 +86,7 @@
     *   **Phản hồi (200 OK):**
         ```json
         {
-          "is_running": true, // hoặc false
+          "is_running": true,
           "current_counts": {
             "total_down": 15,
             "down_by_class": {
@@ -91,26 +94,27 @@
               "motorcycle": 5,
               "truck": 2,
               "bus": 0
-              // ... các loại xe khác nếu có
             },
             "fps": 25.5
           },
-          "stream_url": "D:\\Path\\To\\video\\vehicles.mp4" // hoặc null
+          "stream_url": "D:\\Path\\To\\video\\vehicles.mp4"
         }
         ```
+        *(Lưu ý: `is_running` có thể là `false`, `stream_url` có thể là `null`)*
 
 *   **`GET /api/config/current`**
     *   **Mô tả:** Lấy cấu hình hiện tại đang được sử dụng, chủ yếu là tọa độ đường kẻ đếm. (Tracking area hiện chưa được triển khai đầy đủ).
     *   **Phản hồi (200 OK):**
         ```json
         {
-          "tracking_area": null, // Hoặc cấu trúc dữ liệu nếu được triển khai
-          "counting_line": [[0, 360], [1280, 360]] // [[x1, y1], [x2, y2]] hoặc null nếu chưa set
+          "tracking_area": null,
+          "counting_line": [[0, 360], [1280, 360]]
         }
         ```
+        *(Lưu ý: `tracking_area` có thể có cấu trúc khác nếu được triển khai, `counting_line` có thể là `null` nếu chưa được thiết lập)*
 
 *   **`GET /api/stats/current`**
-    *   **Mô tả:** Lấy số liệu thống kê đếm phương tiện mới nhất. Tương tự như phần `current_counts` trong `/api/video/status`.
+    *   **Mô tả:** Lấy số liệu thống kê đếm phương tiện mới nhất.
     *   **Phản hồi (200 OK):**
         ```json
         {
@@ -126,7 +130,7 @@
         ```
 
 *   **`GET /api/stats/history`**
-    *   **Mô tả:** Lấy lịch sử số liệu đếm đã được ghi lại (nếu tính năng lưu history được bật và hoạt động trong `VideoProcessor`). Cấu trúc chính xác có thể thay đổi tùy thuộc vào cách dữ liệu được lưu trữ.
+    *   **Mô tả:** Lấy lịch sử số liệu đếm đã được ghi lại (nếu tính năng lưu history được bật và hoạt động trong `VideoProcessor`).
     *   **Phản hồi (200 OK):** `List[Dict]`
         ```json
         [
@@ -146,7 +150,6 @@
               "fps": 25.8
             }
           }
-          // ... các bản ghi lịch sử khác
         ]
         ```
 
