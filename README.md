@@ -1,0 +1,181 @@
+# Backend AI for counting vehicle from video streaming 
+
+## Cài đặt và Chạy
+
+1.  **Clone Repository:**
+    ```bash
+    git clone https://github.com/CypriumCuprum/-Uni-Embedded_System_Development.git
+    cd https://github.com/CypriumCuprum/-Uni-Embedded_System_Development.git
+    ```
+2.  **Tạo và Kích hoạt Môi trường ảo (Rất nên dùng hoặc tạo conda !!!):**
+    ```bash
+    python -m venv env
+    or
+    virtualenv env
+    # Trên Linux/macOS
+    source env/bin/activate
+    # Trên Windows Chạy lệnh này để kích hoạt môi trường ảo vừa tạo
+    .\env\Scripts\activate
+    ```
+3.  **Cài đặt library/dependency:**
+    ```bash
+    pip install -r requirements.txt
+    ```
+4.  Run main cứ file main mà run thế là xong hehehehe
+
+## API Endpoints (Thanks Gemini 2.5 Pro kaka)
+
+Ứng dụng cung cấp các endpoint sau (mặc định chạy trên `http://localhost:8081`):
+
+---
+
+### Giao diện người dùng và Video Stream
+
+*   **`GET /`**
+    *   **Mô tả:** Cung cấp trang HTML chính hiển thị luồng video đã xử lý và số liệu thống kê trực tiếp từ WebSocket.
+    *   **Phản hồi:** `text/html`
+
+*   **`GET /stream.mjpg`**
+    *   **Mô tả:** Cung cấp luồng video đã xử lý dưới dạng MJPEG. Thích hợp để nhúng vào thẻ `<img>` trong HTML.
+    *   **Phản hồi:** `multipart/x-mixed-replace; boundary=boundary`
+
+---
+
+### Cấu hình Video và Đường kẻ
+
+*   **`POST /api/video/stream`**
+    *   **Mô tả:** Cấu hình và khởi động (hoặc khởi động lại) quá trình xử lý video từ một nguồn mới (URL hoặc đường dẫn file cục bộ).
+    *   **Request Body:** `string` (plain text) - Chứa URL hoặc đường dẫn file video.
+    *   **Phản hồi thành công (200 OK):**
+        ```json
+        {
+          "status": "success",
+          "message": "Video stream configured"
+        }
+        ```
+    *   **Phản hồi lỗi (500 Internal Server Error):** Nếu không thể mở stream.
+
+*   **`POST /api/config/counting-line`**
+    *   **Mô tả:** Thiết lập tọa độ cho đường kẻ dùng để đếm phương tiện.
+    *   **Request Body (JSON):**
+        ```json
+        {
+          "start": [x1, y1], // Tọa độ điểm bắt đầu (List hoặc Tuple)
+          "end": [x2, y2]   // Tọa độ điểm kết thúc (List hoặc Tuple)
+        }
+        // Ví dụ: {"start": [0, 360], "end": [1280, 360]}
+        ```
+    *   **Phản hồi thành công (200 OK):**
+        ```json
+        {
+          "status": "success",
+          "message": "Counting line set"
+        }
+        ```
+    *   **Phản hồi lỗi (500 Internal Server Error):** Nếu có lỗi xảy ra.
+
+---
+
+### Trạng thái và Thống kê
+
+*   **`GET /api/video/status`**
+    *   **Mô tả:** Lấy trạng thái hiện tại của bộ xử lý video, bao gồm trạng thái chạy, số liệu đếm mới nhất và URL nguồn video đang được xử lý.
+    *   **Phản hồi (200 OK):**
+        ```json
+        {
+          "is_running": true, // hoặc false
+          "current_counts": {
+            "total_down": 15,
+            "down_by_class": {
+              "car": 8,
+              "motorcycle": 5,
+              "truck": 2,
+              "bus": 0
+              // ... các loại xe khác nếu có
+            },
+            "fps": 25.5
+          },
+          "stream_url": "D:\\Path\\To\\video\\vehicles.mp4" // hoặc null
+        }
+        ```
+
+*   **`GET /api/config/current`**
+    *   **Mô tả:** Lấy cấu hình hiện tại đang được sử dụng, chủ yếu là tọa độ đường kẻ đếm. (Tracking area hiện chưa được triển khai đầy đủ).
+    *   **Phản hồi (200 OK):**
+        ```json
+        {
+          "tracking_area": null, // Hoặc cấu trúc dữ liệu nếu được triển khai
+          "counting_line": [[0, 360], [1280, 360]] // [[x1, y1], [x2, y2]] hoặc null nếu chưa set
+        }
+        ```
+
+*   **`GET /api/stats/current`**
+    *   **Mô tả:** Lấy số liệu thống kê đếm phương tiện mới nhất. Tương tự như phần `current_counts` trong `/api/video/status`.
+    *   **Phản hồi (200 OK):**
+        ```json
+        {
+          "total_down": 15,
+          "down_by_class": {
+            "car": 8,
+            "motorcycle": 5,
+            "truck": 2,
+            "bus": 0
+          },
+          "fps": 25.5
+        }
+        ```
+
+*   **`GET /api/stats/history`**
+    *   **Mô tả:** Lấy lịch sử số liệu đếm đã được ghi lại (nếu tính năng lưu history được bật và hoạt động trong `VideoProcessor`). Cấu trúc chính xác có thể thay đổi tùy thuộc vào cách dữ liệu được lưu trữ.
+    *   **Phản hồi (200 OK):** `List[Dict]`
+        ```json
+        [
+          {
+            "timestamp": "2023-10-27T10:30:00.123456",
+            "counts": {
+              "total_down": 10,
+              "down_by_class": {"car": 5, "motorcycle": 4, "truck": 1, "bus": 0},
+              "fps": 26.1
+            }
+          },
+          {
+            "timestamp": "2023-10-27T10:30:01.123456",
+            "counts": {
+              "total_down": 11,
+              "down_by_class": {"car": 5, "motorcycle": 5, "truck": 1, "bus": 0},
+              "fps": 25.8
+            }
+          }
+          // ... các bản ghi lịch sử khác
+        ]
+        ```
+
+---
+
+### WebSocket
+
+*   **Path:** `/ws/stats`
+*   **Mô tả:** Cung cấp một kênh giao tiếp WebSocket để gửi dữ liệu thống kê đếm phương tiện theo thời gian thực từ server đến client. Server sẽ gửi bản cập nhật khoảng mỗi giây.
+*   **Định dạng tin nhắn (Server -> Client - JSON):**
+    ```json
+    {
+      "total_down": 16,
+      "down_by_class": {
+        "car": 9,
+        "motorcycle": 5,
+        "truck": 2,
+        "bus": 0
+      },
+      "fps": 25.9
+    }
+    ```
+
+## TODO / Cải tiến tiềm năng
+
+*   Thêm khả năng cấu hình vùng theo dõi (tracking area) phức tạp hơn (polygon).
+*   Triển khai đếm phương tiện theo hướng đi lên ('up').
+*   Xử lý lỗi và khôi phục kết nối mạnh mẽ hơn cho video stream và WebSocket.
+*   Thêm xác thực API (ví dụ: API keys).
+*   Cải thiện giao diện người dùng (frontend).
+*   Thêm Unit Test và Integration Test.
+*   Tối ưu hóa hiệu suất xử lý video.
