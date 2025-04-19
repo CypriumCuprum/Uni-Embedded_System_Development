@@ -14,10 +14,10 @@ from models import VehicleCount
 import torch
 
 class VideoProcessor:
-    def __init__(self):
+    def __init__(self, stream_port: int = 8081):
         """Initialize the video processor with YOLO model and ByteTrack"""
         self.base_dir = os.path.dirname(os.path.abspath(__file__))
-        model_path = os.path.join(self.base_dir, 'yolov8n.pt')
+        model_path = os.path.join(self.base_dir, 'yolov8s.pt')
         self.model = YOLO(model_path)
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
         print(f"Using device: {device}")
@@ -73,9 +73,28 @@ class VideoProcessor:
         self.current_frame = None
         self.frame_lock = asyncio.Lock()
         self.cap = None
-        self.stream_port = 8081
+        self.stream_port = stream_port
         self.stream_url = None
         self.db = get_database()
+
+    def detect_image(self, frame):
+        frame = cv2.resize(frame, (settings.frame_width, settings.frame_height))
+        results = \
+        self.model(frame, conf=settings.conf_thresh, iou=settings.iou_thresh, classes=list(self.vehicle_class_ids),
+                   verbose=False)[0]
+        detections = sv.Detections.from_ultralytics(results)
+
+        annotated_frame = frame.copy()
+
+        if len(detections) > 0:
+            for xyxy, confidence, class_id in zip(detections.xyxy, detections.confidence, detections.class_id):
+                if class_id in self.class_names:
+                    label = f"{self.class_names[class_id]} {confidence:0.2f}"
+                    cv2.rectangle(annotated_frame, (int(xyxy[0]), int(xyxy[1])), (int(xyxy[2]), int(xyxy[3])),
+                                  (0, 255, 0), 2)
+                    cv2.putText(annotated_frame, label, (int(xyxy[0]), int(xyxy[1]) - 10),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+        return annotated_frame
 
     def set_counting_line(self, start: Tuple[int, int], end: Tuple[int, int]):
         """Set up the counting line."""
@@ -335,7 +354,7 @@ class VideoProcessor:
                     if is_file:
                         print("End of video file reached. Resetting to beginning.")
                         self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-                        self.reset_counts() # Reset bộ đếm khi quay lại đầu file
+                        # self.reset_counts() # Reset bộ đếm khi quay lại đầu file
                         await asyncio.sleep(0.1) # Chờ chút trước khi đọc lại
                         continue
                     else: # Là stream (IP cam, web stream)
@@ -445,3 +464,18 @@ class VideoProcessor:
         # Có thể lấy host từ request hoặc config
         host = "localhost" # Hoặc settings.SERVICE_HOST
         return f"http://{host}:{self.stream_port}/stream.mjpg"
+
+
+if __name__ == "__main__":
+    # Test VideoProcessor
+    video_processor = VideoProcessor()
+    image_path = "D:\CUPRUM\PTIT\Term_8\Embedded_System_Development\BE_AI\image_test\\testtyty.png"
+
+    image = cv2.imread(image_path)
+    if image is None:
+        print("Error: Could not read the image.")
+    else:
+        processed_image = video_processor.detect_image(image)
+        cv2.imshow("Processed Image", processed_image)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
