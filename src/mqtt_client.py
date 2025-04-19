@@ -11,9 +11,9 @@ async def handle_sub_message(topic, message):
         _db = get_database()
         road, color, timeDuration, content = message.split(",")
         if(content in ["ON", "OFF"]):
-            existing_traffic_light = await _db.get_traffic_light_status(color)
+            existing_traffic_light = await _db.get_traffic_light_status(color, road)
             if existing_traffic_light:
-                success = await _db.update_traffic_light_status(color, content, int(timeDuration))
+                success = await _db.update_traffic_light_status(color, content, int(timeDuration), road)
                 if success:
                     print(f"Đèn {color} đã được cập nhật trạng thái thành {content}")
                 else:

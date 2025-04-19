@@ -148,7 +148,7 @@ void updateTrafficLight() {
       countdown = RED_TIME / 1000;  // Chuyển đổi milis sang giây
       pubStatusAll("RED");
       break;
-  pubNoti()
+  pubNoti();
   }
   
   Serial.print("Chuyển sang trạng thái: ");
@@ -169,8 +169,11 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   Serial.print("]: ");
   Serial.println(message);
   
+  String roadPub = message.substring(0, message.indexOf(","));
+  message = message.substring(message.indexOf(",") + 1);
+
   // Xử lý thông điệp nhận được từ MQTT
-  if (String(topic) == "traffic_lights/cycles") {
+  if (String(topic) == "traffic_lights/cycles" && String(road) == roadPub ) {
     // Tách thông số chu kỳ đèn từ thông điệp
     int greenTime = message.substring(0, message.indexOf(",")).toInt();
     message = message.substring(message.indexOf(",") + 1);
@@ -218,20 +221,20 @@ void pubNoti(){
   switch (currentState) {
       case RED:
         colorStr = "RED";
-        timeDuration = RED_TIME
+        timeDuration = RED_TIME/1000;
         break;
       case GREEN:
         colorStr = "GREEN";
-        timeDuration = GREEN_TIME
+        timeDuration = GREEN_TIME/1000;
         break;
       case YELLOW:
         colorStr = "YELLOW";
-        timeDuration = YELLOW_TIME
+        timeDuration = YELLOW_TIME/1000;
         break;
     }
 
     String message = road + "," + colorStr + "," + timeDuration + "," + String(countdown);
-    client.publish("mqtt_pub", message.c_str());
+    client.publish(mqtt_pub, message.c_str());
     
     Serial.print("Đã publish: ");
     Serial.println(message);
@@ -239,23 +242,19 @@ void pubNoti(){
 
 void pubStatus(String color, String status){
   int timeDuration;
-  switch (color) {
-      case "RED":
-        timeDuration = RED_TIME/1000
-        break;
-      case "GREEN":
-        timeDuration = GREEN_TIME/1000
-        break;
-      case "YELLOW":
-        timeDuration = YELLOW_TIME/1000
-        break;
-    }
+  if (color == "RED") {
+    timeDuration = RED_TIME / 1000;
+  } else if (color == "GREEN") {
+    timeDuration = GREEN_TIME / 1000;
+  } else if (color == "YELLOW") {
+    timeDuration = YELLOW_TIME / 1000;
+  }
 
-    String message = road + "," + color + "," + String(timeDuration) + "," + status;
-    client.publish("mqtt_pub", message.c_str());
-    
-    Serial.print("Đã publish: ");
-    Serial.println(message);
+  String message = road + "," + color + "," + String(timeDuration) + "," + status;
+  client.publish(mqtt_pub, message.c_str());
+  
+  Serial.print("Đã publish: ");
+  Serial.println(message);
 }
 
 void pubStatusAll(String colorOn){
