@@ -31,5 +31,9 @@ class StreamConfig(BaseModel):
 class TrafficLight(BaseModel):
     color: str
     road: str
-    timeDuration: int
-    timestamp: datetime
+    status: str
+    timeDuration: int # thời gian đèn được chỉ định
+
+class TrafficLightLog(TrafficLight):
+    timeRemaning: int
+    timestamp: datetime # thời gian còn lại của đèn cho đến khi đổi sang đèn khác
