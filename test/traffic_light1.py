@@ -105,8 +105,11 @@ def on_message(client, userdata, msg):
     print(f"Nhận từ MQTT [{msg.topic}]: {message}")
     try:
         parts = list(map(int, message.split(",")))
-        if len(parts) == 3:
-            NEW_GREEN_TIME, NEW_YELLOW_TIME, NEW_RED_TIME = parts
+        if(str(parts[0]) != ROAD):
+            print("Not road 1")
+            return
+        if len(parts[1:]) == 3:
+            NEW_GREEN_TIME, NEW_YELLOW_TIME, NEW_RED_TIME = parts[1:]
             cycleChanged = True
             print("Đã nhận chu kỳ mới:")
             print("GREEN:", NEW_GREEN_TIME)
@@ -129,8 +132,8 @@ def traffic_loop():
 def mqtt_loop():
     client.connect(MQTT_BROKER, MQTT_PORT, 60)
     client.subscribe(MQTT_SUB_TOPIC)
+    pub_status_all(f"{current_state}")
     client.loop_forever()
-
 client.on_message = on_message
 
 if __name__ == "__main__":
