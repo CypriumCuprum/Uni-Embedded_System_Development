@@ -43,18 +43,18 @@ class Database:
             doc.pop("_id", None)
         return TrafficLightLog(**doc) if doc else None
 
-    async def get_traffic_light_status(self, light_color: str) -> TrafficLight | None:
+    async def get_traffic_light_status(self, light_color: str, road: str) -> TrafficLight | None:
         doc = await self.traffic_light.find_one(
-            {"color": light_color}
+            {"color": light_color, "road": road}
         )
         if doc:
             doc.pop("_id", None)
         print(doc)
         return TrafficLight(**doc) if doc else None
     
-    async def update_traffic_light_status(self, color: str, new_status: str, new_time_duration: int) -> bool:
+    async def update_traffic_light_status(self, color: str, new_status: str, new_time_duration: int, road: str) -> bool:
         result = await self.traffic_light.update_one(
-            {"color": color},
+            {"color": color, "road": road},
             {"$set": {"status": new_status, "timeDuration": new_time_duration}}
         )
         return result.modified_count > 0
