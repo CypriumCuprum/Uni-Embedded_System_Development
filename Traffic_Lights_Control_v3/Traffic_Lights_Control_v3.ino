@@ -218,15 +218,15 @@ void pubNoti(){
   switch (currentState) {
       case RED:
         colorStr = "RED";
-        timeDuration = RED_TIME
+        timeDuration = RED_TIME/1000;
         break;
       case GREEN:
         colorStr = "GREEN";
-        timeDuration = GREEN_TIME
+        timeDuration = GREEN_TIME/1000;
         break;
       case YELLOW:
         colorStr = "YELLOW";
-        timeDuration = YELLOW_TIME
+        timeDuration = YELLOW_TIME/1000;
         break;
     }
 
@@ -239,23 +239,19 @@ void pubNoti(){
 
 void pubStatus(String color, String status){
   int timeDuration;
-  switch (color) {
-      case "RED":
-        timeDuration = RED_TIME/1000
-        break;
-      case "GREEN":
-        timeDuration = GREEN_TIME/1000
-        break;
-      case "YELLOW":
-        timeDuration = YELLOW_TIME/1000
-        break;
-    }
+  if (color == "RED") {
+    timeDuration = RED_TIME / 1000;
+  } else if (color == "GREEN") {
+    timeDuration = GREEN_TIME / 1000;
+  } else if (color == "YELLOW") {
+    timeDuration = YELLOW_TIME / 1000;
+  }
 
-    String message = road + "," + color + "," + String(timeDuration) + "," + status;
-    client.publish("mqtt_pub", message.c_str());
-    
-    Serial.print("Đã publish: ");
-    Serial.println(message);
+  String message = road + "," + color + "," + String(timeDuration) + "," + status;
+  client.publish(mqtt_pub, message.c_str());
+  
+  Serial.print("Đã publish: ");
+  Serial.println(message);
 }
 
 void pubStatusAll(String colorOn){
