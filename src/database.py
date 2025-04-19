@@ -1,14 +1,14 @@
 from motor.motor_asyncio import AsyncIOMotorClient
 from datetime import datetime
 from typing import List
-from models import VehicleCount
+from models import VehicleCount, TrafficLight
 
 class Database:
     def __init__(self, connection_string: str):
         self.client = AsyncIOMotorClient(connection_string)
         self.db = self.client.vehicle_counting
         self.counts = self.db.vehicle_counts
-
+        self.traffic_light = self.db.traffic_light
     async def save_vehicle_count(self, count: VehicleCount):
         await self.counts.insert_one(count.dict())
 
@@ -26,6 +26,16 @@ class Database:
         }).sort("timestamp", -1)
         counts = await cursor.to_list(length=None)
         return [VehicleCount(**count) for count in counts]
+
+    async def save_traffic_light_status(self, status: TrafficLight):
+        await self.traffic_light.insert_one(status.dict())
+
+    async def get_latest_traffic_light_status(self, light_color: str) -> TrafficLight | None:
+        doc = await self.traffic_light.find_one(
+            {"color": light_color},
+            sort=[("timestamp", -1)]
+        )
+        return TrafficLight(**doc) if doc else None
 
 # Global database instance
 _db = None

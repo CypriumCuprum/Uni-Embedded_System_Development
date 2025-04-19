@@ -11,6 +11,7 @@ from websocket_manager import WebSocketManager
 import asyncio
 import os
 from pydantic import BaseModel
+from mqtt_client import MQTTClient
 
 # Get the base directory
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -28,6 +29,8 @@ app.add_middleware(
 
 # Initialize components
 video_processor = VideoProcessor()
+loop = asyncio.get_event_loop()
+mqtt_client = MQTTClient(loop)
 
 # Define request models
 class CountingLineRequest(BaseModel):
@@ -36,6 +39,9 @@ class CountingLineRequest(BaseModel):
 
 @app.on_event("startup")
 async def startup_event():
+    mqtt_client.connect()
+    # mqtt_client.publish(settings.mqtt_topic_pub, "30000;5000;20000")
+
     """Initialize video processing on server startup"""
     try:
         # Set up counting line (horizontal line at the middle of the frame)
