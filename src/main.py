@@ -45,7 +45,7 @@ async def startup_event():
         
         # Start processing video stream
         # stream_url = "http://localhost:8080/stream.mjpg"
-        stream_url = "D:\CUPRUM\PTIT\Term_8\Embedded_System_Development\BE_AI\\video\\vehicles.mp4"
+        stream_url = "D:\CUPRUM\PTIT\Term_8\Embedded_System_Development\BE_AI\\video\Bellevue_116th_NE12th__2017-09-11_15-08-36.mp4"
         # stream_url = "http://192.168.1.10:8080/?action=stream"
         await video_processor.start_stream(stream_url)
         print("Video processing started automatically")
