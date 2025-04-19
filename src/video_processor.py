@@ -14,7 +14,7 @@ from models import VehicleCount
 import torch
 
 class VideoProcessor:
-    def __init__(self):
+    def __init__(self, stream_port: int = 8081):
         """Initialize the video processor with YOLO model and ByteTrack"""
         self.base_dir = os.path.dirname(os.path.abspath(__file__))
         model_path = os.path.join(self.base_dir, 'yolov8s.pt')
@@ -73,7 +73,7 @@ class VideoProcessor:
         self.current_frame = None
         self.frame_lock = asyncio.Lock()
         self.cap = None
-        self.stream_port = 8081
+        self.stream_port = stream_port
         self.stream_url = None
         self.db = get_database()
 
