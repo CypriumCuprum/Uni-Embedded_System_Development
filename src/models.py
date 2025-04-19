@@ -27,3 +27,9 @@ class StreamConfig(BaseModel):
     url: str
     fps: int = 30
     resolution: Tuple[int, int] = (640, 480) 
+
+class TrafficLight(BaseModel):
+    color: str
+    road: str
+    timeDuration: int
+    timestamp: datetime
