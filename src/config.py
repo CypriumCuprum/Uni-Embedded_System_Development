@@ -2,10 +2,21 @@ from pydantic_settings import BaseSettings
 from typing import Optional
 import os
 from dotenv import load_dotenv
+import socket
 
 load_dotenv()
 
 class Settings(BaseSettings):
+
+    def get_local_ip():
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            s.connect(("8.8.8.8", 80))
+            ip = s.getsockname()[0]
+        finally:
+            s.close()
+        return ip
+
     # MongoDB settings
     mongodb_url: str = os.getenv("MONGODB_URL", "mongodb://localhost:27017")
     
@@ -28,7 +39,14 @@ class Settings(BaseSettings):
     host: str = os.getenv("HOST", "0.0.0.0")
     port: int = int(os.getenv("PORT", "8000"))
     
+    # MQTT 
+    mqtt_broker: str = os.getenv("MQTT_BROKER", str(get_local_ip()))
+    mqtt_port: int = int(os.getenv("MQTT_PORT", "1883"))
+    mqtt_topic_pub: str = os.getenv("MQTT_TOPIC_PUB", "traffic_lights/cycles")
+    mqtt_topic_sub: str = os.getenv("MQTT_TOPIC_SUB", "traffic_lights/noti")
+
     class Config:
         env_file = ".env"
+        protected_namespaces = ("settings_",)
 
 settings = Settings() 

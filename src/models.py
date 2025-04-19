@@ -27,3 +27,13 @@ class StreamConfig(BaseModel):
     url: str
     fps: int = 30
     resolution: Tuple[int, int] = (640, 480) 
+
+class TrafficLight(BaseModel):
+    color: str
+    road: str
+    status: str
+    timeDuration: int # thời gian đèn được chỉ định
+
+class TrafficLightLog(TrafficLight):
+    timeRemaning: int
+    timestamp: datetime # thời gian còn lại của đèn cho đến khi đổi sang đèn khác
