@@ -130,6 +130,7 @@ void updateTrafficLight() {
       currentState = GREEN;
       digitalWrite(GREEN_LIGHT, HIGH);
       countdown = GREEN_TIME / 1000;  // Chuyển đổi milis sang giây
+      pubStatusAll("GREEN");
       break;
       
     case GREEN:
@@ -137,6 +138,7 @@ void updateTrafficLight() {
       currentState = YELLOW;
       digitalWrite(YELLOW_LIGHT, HIGH);
       countdown = YELLOW_TIME / 1000;  // Chuyển đổi milis sang giây
+      pubStatusAll("YELLOW");
       break;
       
     case YELLOW:
@@ -144,6 +146,7 @@ void updateTrafficLight() {
       currentState = RED;
       digitalWrite(RED_LIGHT, HIGH);
       countdown = RED_TIME / 1000;  // Chuyển đổi milis sang giây
+      pubStatusAll("RED");
       break;
   pubNoti()
   }
@@ -211,23 +214,70 @@ void reconnect() {
 
 void pubNoti(){
   String colorStr;
+  String timeDuration;
   switch (currentState) {
       case RED:
         colorStr = "RED";
+        timeDuration = RED_TIME
         break;
       case GREEN:
         colorStr = "GREEN";
+        timeDuration = GREEN_TIME
         break;
       case YELLOW:
         colorStr = "YELLOW";
+        timeDuration = YELLOW_TIME
         break;
     }
 
-    String message = road + ";" + colorStr + ";" + String(countdown);
+    String message = road + "," + colorStr + "," + timeDuration + "," + String(countdown);
     client.publish("mqtt_pub", message.c_str());
     
     Serial.print("Đã publish: ");
     Serial.println(message);
+}
+
+void pubStatus(String color, String status){
+  int timeDuration;
+  switch (color) {
+      case "RED":
+        timeDuration = RED_TIME/1000
+        break;
+      case "GREEN":
+        timeDuration = GREEN_TIME/1000
+        break;
+      case "YELLOW":
+        timeDuration = YELLOW_TIME/1000
+        break;
+    }
+
+    String message = road + "," + color + "," + String(timeDuration) + "," + status;
+    client.publish("mqtt_pub", message.c_str());
+    
+    Serial.print("Đã publish: ");
+    Serial.println(message);
+}
+
+void pubStatusAll(String colorOn){
+  String colorOff1, colorOff2;
+  switch (colorOn)
+  {
+  case "RED":
+    colorOff1 = "YELLOW";
+    colorOff2 = "GREEN";
+    break;
+  case "YELLOW":
+    colorOff1 = "RED";
+    colorOff2 = "GREEN";
+    break;
+  case "GREEN":
+    colorOff1 = "YELLOW";
+    colorOff2 = "RED";
+    break;
+  }
+  pubStatus(colorOn, "ON");
+  pubStatus(colorOff1, "OFF");
+  pubStatus(colorOff2, "OFF");
 }
 
 void setup() {
@@ -255,7 +305,7 @@ void setup() {
   digitalWrite(GREEN_LIGHT, LOW);
   currentState = RED;
   countdown = RED_TIME / 1000;
-  
+  pubStatusAll("RED");
   // Khởi tạo chu kỳ mới bằng giá trị mặc định
   NEW_RED_TIME = RED_TIME;
   NEW_YELLOW_TIME = YELLOW_TIME;
