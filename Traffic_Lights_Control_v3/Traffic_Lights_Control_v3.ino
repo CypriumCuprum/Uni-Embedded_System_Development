@@ -1,8 +1,9 @@
 #include <WiFi.h>
 #include <PubSubClient.h>
 
-// pub: .\mosquitto_pub -h 172.20.10.10 -p 1889 -t traffic_lights/cycles -m "10000,4000,10000"
-// sub: .\mosquitto_sub -h 172.20.10.10 -p 1889 -t traffic_light/cycles
+// pub: mosquitto_pub -h 172.20.10.10 -p 1889 -t traffic_lights/cycles -m "10000,4000,10000"
+// sub: mosquitto_sub -h 172.20.10.10 -p 1889 -t traffic_light/cycles
+//      mosquitto_sub -h 172.20.10.10 -p 1889 -t traffic_lights/noti
 
 // khai báo cột đèn giao thông
 const char* road = "1";
@@ -219,21 +220,21 @@ void pubNoti(){
   String colorStr;
   String timeDuration;
   switch (currentState) {
-      case RED:
-        colorStr = "RED";
-        timeDuration = RED_TIME/1000;
-        break;
-      case GREEN:
-        colorStr = "GREEN";
-        timeDuration = GREEN_TIME/1000;
-        break;
-      case YELLOW:
-        colorStr = "YELLOW";
-        timeDuration = YELLOW_TIME/1000;
-        break;
-    }
+    case RED:
+      colorStr = "RED";
+      timeDuration = RED_TIME/1000;
+      break;
+    case GREEN:
+      colorStr = "GREEN";
+      timeDuration = GREEN_TIME/1000;
+      break;
+    case YELLOW:
+      colorStr = "YELLOW";
+      timeDuration = YELLOW_TIME/1000;
+      break;
+  }
 
-    String message = road + "," + colorStr + "," + timeDuration + "," + String(countdown);
+    String message = String(road) + "," + colorStr + "," + String(timeDuration) + "," + String(countdown);
     client.publish(mqtt_pub, message.c_str());
     
     Serial.print("Đã publish: ");
@@ -250,7 +251,7 @@ void pubStatus(String color, String status){
     timeDuration = YELLOW_TIME / 1000;
   }
 
-  String message = road + "," + color + "," + String(timeDuration) + "," + status;
+  String message = String(road) + "," + color + "," + String(timeDuration) + "," + String(countdown);
   client.publish(mqtt_pub, message.c_str());
   
   Serial.print("Đã publish: ");
@@ -259,20 +260,17 @@ void pubStatus(String color, String status){
 
 void pubStatusAll(String colorOn){
   String colorOff1, colorOff2;
-  switch (colorOn)
-  {
-  case "RED":
+  if (colorOn == "RED") {
     colorOff1 = "YELLOW";
     colorOff2 = "GREEN";
-    break;
-  case "YELLOW":
+  }
+  else if (colorOn == "YELLOW") {
     colorOff1 = "RED";
     colorOff2 = "GREEN";
-    break;
-  case "GREEN":
+  }
+  else if (colorOn == "GREEN") {
     colorOff1 = "YELLOW";
     colorOff2 = "RED";
-    break;
   }
   pubStatus(colorOn, "ON");
   pubStatus(colorOff1, "OFF");
@@ -363,7 +361,7 @@ void loop() {
   // pub thông báo về server
   if (currentMillis - lastPublishTime >= 5000) {
     lastPublishTime = currentMillis;
-    pubNoti()
+    pubNoti();
   }
   
   // Thêm delay nhỏ để giảm flicker của LED
