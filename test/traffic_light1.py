@@ -82,7 +82,7 @@ def update_traffic_light():
         print("Đèn Xanh:", GREEN_TIME)
         print("Đèn Vàng:", YELLOW_TIME)
         print("Đèn Đỏ:", RED_TIME)
-
+ 
     if current_state == TrafficState.RED:
         current_state = TrafficState.GREEN
         countdown = GREEN_TIME // 1000

@@ -117,7 +117,7 @@ def on_message(client, userdata, msg):
             print("RED:", NEW_RED_TIME)
     except Exception as e:
         print("Lỗi khi phân tích chuỗi:", e)
-
+ 
 def traffic_loop():
     global countdown
     while True:
