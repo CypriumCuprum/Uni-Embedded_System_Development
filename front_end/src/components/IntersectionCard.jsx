@@ -15,7 +15,7 @@ const IntersectionCard = ({ feed }) => {
     const [cycleUpdatePending, setCycleUpdatePending] = useState(false);
     const [inputValue, setInputValue] = useState(cycleDuration); // Default input value
     useEffect(() => {
-        const wsUrl = `http://localhost:8081/ws/stats`;
+        const wsUrl = `http://localhost:8080/ws/stats/1`;
         console.log(`Attempting to connect WebSocket to: ${wsUrl}`);
 
         const ws = new WebSocket(wsUrl);
@@ -103,7 +103,7 @@ const IntersectionCard = ({ feed }) => {
                 <div className="camera-feed">
                     <div className="camera-image-container">
                         <img
-                            src="http://localhost:8081/stream.mjpg"
+                            src="http://localhost:8080/stream1.mjpg"
                             alt="Traffic camera view 1"
                             className="camera-image"
                         />
@@ -119,7 +119,7 @@ const IntersectionCard = ({ feed }) => {
                 <div className="camera-feed">
                     <div className="camera-image-container">
                         <img
-                            src="http://localhost:8081/stream.mjpg"
+                            src="http://localhost:8080/stream2.mjpg"
                             alt="Traffic camera view 2"
                             className="camera-image"
                         />
