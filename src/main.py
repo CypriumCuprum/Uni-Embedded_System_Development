@@ -416,6 +416,12 @@ async def get_count_history(processor_id: int):
     else:
         raise HTTPException(status_code=400, detail="Invalid processor_id. Must be 1 or 2.")
 
+# endpoint to change traffic cycles
+@app.post("/api/cycle")
+async def change_cycle(message: str):
+    mqtt_client.publish(settings.mqtt_topic_pub, message)
+    return {f"message_pub to {settings.mqtt_topic_pub}": message}
+
 
 # WebSocket endpoints for both cameras
 @app.websocket("/ws/stats/1")
