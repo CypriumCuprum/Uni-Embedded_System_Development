@@ -38,7 +38,7 @@ class TrafficState:
 
 current_state = TrafficState.RED
 countdown = RED_TIME // 1000
-
+last_pub_time = time.time()
 client = mqtt.Client()
 
 def pub_status(color, status):
@@ -120,12 +120,18 @@ def on_message(client, userdata, msg):
 
 def traffic_loop():
     global countdown
+    global last_pub_time
     while True:
+        now = time.time()
         if countdown <= 0:
+            pub_noti()
             update_traffic_light()
+            last_pub_time = now
         else:
             print(f"{current_state} - Còn lại: {countdown} giây")
-            pub_noti()
+            if(now - last_pub_time >=5 ): 
+                pub_noti()
+                last_pub_time = now
             countdown -= 1
         time.sleep(1)
 
