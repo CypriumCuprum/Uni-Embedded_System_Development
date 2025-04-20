@@ -74,5 +74,5 @@ class MQTTClient:
         )
 
     def publish(self, topic: str, payload: str):
-        # pub 1 message dạng "GreenTimeDuration, YellowTimeDuration, RedTimeDuration" đơn vị ms "20000;5000;30000"
+        # pub 1 message dạng "ROAD,GreenTimeDuration,YellowTimeDuration,RedTimeDuration" đơn vị ms "1,20000,5000,30000" hiện tại dùng 2 đường là 1 và 2
         self.client.publish(topic, payload)
