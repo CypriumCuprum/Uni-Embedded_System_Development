@@ -65,6 +65,7 @@ async def startup_event():
         # Start processing video streams
         stream_url1 = "D:\CUPRUM\PTIT\Term_8\Embedded_System_Development\BE_AI\\video\\vehicles.mp4"
         stream_url2 = "D:\CUPRUM\PTIT\Term_8\Embedded_System_Development\BE_AI\\video\Bellevue_116th_NE12th__2017-09-11_15-08-36.mp4"
+        stream_url2 = "http://192.168.1.152:8080/?action=stream"
 
         await video_processor1.start_stream(stream_url1)
         await video_processor2.start_stream(stream_url2)
