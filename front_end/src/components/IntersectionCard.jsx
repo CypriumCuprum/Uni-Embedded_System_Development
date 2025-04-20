@@ -14,11 +14,8 @@ const IntersectionCard = ({ feed }) => {
     const [pendingCycleDuration, setPendingCycleDuration] = useState(10);
     const [cycleUpdatePending, setCycleUpdatePending] = useState(false);
     const [inputValue, setInputValue] = useState(cycleDuration);
-    const [dataSocket, setDataSocket] = useState({})
-    const [light,setLight] = useState({
-        left: {},
-        right: {},
-    }) // Default input value
+    const [light1, setLight1] = useState({})
+    const [light2, setLight2] = useState({})
     useEffect(() => {
         const wsUrl = `http://localhost:8080/ws/stats/1`;
         console.log(`Attempting to connect WebSocket to: ${wsUrl}`);
@@ -78,13 +75,15 @@ const IntersectionCard = ({ feed }) => {
         };
     }, []);
     useEffect(()=>{
-        const mqttUrl = 'http://localhost:8080/ws/mqtt'
-        const ws = new WebSocket(mqttUrl);
-        ws.onopen = () => {
+        const mqttUrl1 = 'http://localhost:8080/ws/mqtt1'
+        const mqttUrl2 = 'http://localhost:8080/ws/mqtt2'
+        const ws1 = new WebSocket(mqttUrl1);
+        const ws2 = new WebSocket(mqttUrl2);
+        ws1.onopen = () => {
             console.log('WebSocket connection opened');
             setDownByClass([]);
         };
-        ws.onmessage = (event) => {
+        ws1.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
                 const {messages} = data;
@@ -92,10 +91,7 @@ const IntersectionCard = ({ feed }) => {
                 if (messages) {
                     messages.forEach(value => {
                         if(parseInt(value?.road) === 1){
-                            setLight({...light, left: value});
-                        }
-                        else if(parseInt(value?.road) === 2){
-                            setLight({...light, right: value});
+                            setLight1(value);
                         }
                     });
                 }
@@ -104,14 +100,44 @@ const IntersectionCard = ({ feed }) => {
                 console.error('Error processing WebSocket message:', err);
             }
         };
-        ws.onerror = (event) => {
+        ws1.onerror = (event) => {
             console.error('WebSocket error observed:', event);
         };
-        ws.onclose = (event) => {
+        ws1.onclose = (event) => {
             console.log(`WebSocket closed: Code=${event.code}, Reason=${event.reason}, WasClean=${event.wasClean}`);
         };
+
+        ws2.onopen = () => {
+            console.log('WebSocket connection opened');
+            setDownByClass([]);
+        };
+        ws2.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                const {messages} = data;
+                console.log('messages', messages);
+                if (messages) {
+                    messages.forEach(value => {
+                        if(parseInt(value?.road) === 2){
+                            setLight2( value);
+                        }
+                    });
+                }
+                console.log('Received data MQTT:', data);
+            } catch (err) {
+                console.error('Error processing WebSocket message:', err);
+            }
+        };
+        ws2.onerror = (event) => {
+            console.error('WebSocket error observed:', event);
+        };
+        ws2.onclose = (event) => {
+            console.log(`WebSocket closed: Code=${event.code}, Reason=${event.reason}, WasClean=${event.wasClean}`);
+        };
+
         return () => {
-            ws.close();
+            ws1.close();
+            ws2.close();
         };
     },[])
     // console.log('light', light);
@@ -155,7 +181,7 @@ const IntersectionCard = ({ feed }) => {
                     {/* Green bounding boxes overlay */}
 
                     {/* Traffic Light Component for first view */}
-                    <TrafficLight light = {light.left} />
+                    <TrafficLight light = {light1} />
                 </div>
 
                 {/* Second Camera Feed */}
@@ -171,7 +197,10 @@ const IntersectionCard = ({ feed }) => {
                     {/* Green bounding boxes overlay */}
 
                     {/* Traffic Light Component for second view */}
-                    <TrafficLight light={light.left} />
+                    {
+                        console.log("light", light2)
+                    }
+                    <TrafficLight light={light2} />
                 </div>
             </div>
 
@@ -237,7 +266,7 @@ const IntersectionCard = ({ feed }) => {
                 </div>
                 <div className="feed-detail">Lưu lượng: {totalDown}</div>
                 <div className="feed-detail">FPS: {fps}</div>
-                <div className='feed-detail'>Thời gian: {light.left?.content} </div>
+                <div className='feed-detail'>Thời gian: {light1?.content} </div>
 
                 <Box className="traffic-control" sx={{ mt: 2 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, justifyContent: 'space-between' }}>
