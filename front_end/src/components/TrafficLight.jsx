@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import './TrafficDashboard.css';
 const TrafficLight = ({ light }) => {
-    console.log('light', light);
+    // console.log('light', light);
     // const [lightState, setLightState] = useState(position === 'left' ? 'green' : 'red');
     // const [timer, setTimer] = useState(position === 'left' ? parseInt(cycle) : parseInt(cycle) + 5); // Start with green for left and red for right
 

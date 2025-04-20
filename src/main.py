@@ -64,8 +64,8 @@ async def startup_event():
         video_processor2.set_counting_line(line_start, line_end)
 
         # Start processing video streams
-        stream_url1 = "D:\\BTL_Nhung1\\Uni-Embedded_System_Development\\video\\vehicles.mp4"
-        stream_url2 = "D:\\BTL_Nhung1\\Uni-Embedded_System_Development\\video\\vehicles.mp4"
+        stream_url1 = "C:\\Users\\PC\\Documents\\Y4\\T8\\Embedding\\src\\Uni-Embedded_System_Development\\video\\vehicles.mp4"
+        stream_url2 = "C:\\Users\\PC\\Documents\\Y4\\T8\\Embedding\\src\\Uni-Embedded_System_Development\\video\\vehicles.mp4"
         # stream_url2 = "http://192.168.1.152:8080/?action=stream"
 
         await video_processor1.start_stream(stream_url1)
@@ -479,18 +479,18 @@ async def websocket_endpoint2(websocket: WebSocket):
         print(f"WebSocket 2 handler finished for: {client_host}:{client_port}")
     
 # WebSocket endpoint for MQTT data
-@app.websocket("/ws/mqtt")
+@app.websocket("/ws/mqtt1")
 async def websocket_mqtt_endpoint(websocket: WebSocket):
     """WebSocket endpoint for real-time MQTT updates"""
     await websocket.accept()  # Sử dụng accept trực tiếp vì chưa có phương thức connect trong code bạn chia sẻ
     client_host = websocket.client.host
     client_port = websocket.client.port
     print(f"MQTT WebSocket connection accepted from: {client_host}:{client_port}")
-    
     # Thêm websocket vào danh sách kết nối của mqtt_websocket_manager
     if not hasattr(mqtt_websocket_manager, "active_connections"):
         mqtt_websocket_manager.active_connections = []
     mqtt_websocket_manager.active_connections.append(websocket)
+    mqtt_websocket_manager.list_channel["mqtt1"] = websocket
     
     try:
         # Gửi thông báo kết nối thành công
@@ -518,6 +518,45 @@ async def websocket_mqtt_endpoint(websocket: WebSocket):
             if websocket in mqtt_websocket_manager.active_connections:
                 mqtt_websocket_manager.active_connections.remove(websocket)
 
+# WebSocket endpoint for MQTT data
+@app.websocket("/ws/mqtt2")
+async def websocket_mqtt_endpoint(websocket: WebSocket):
+    """WebSocket endpoint for real-time MQTT updates"""
+    await websocket.accept()  # Sử dụng accept trực tiếp vì chưa có phương thức connect trong code bạn chia sẻ
+    client_host = websocket.client.host
+    client_port = websocket.client.port
+    print(f"MQTT WebSocket connection accepted from: {client_host}:{client_port}")
+    
+    # Thêm websocket vào danh sách kết nối của mqtt_websocket_manager
+    if not hasattr(mqtt_websocket_manager, "active_connections"):
+        mqtt_websocket_manager.active_connections = []
+    mqtt_websocket_manager.active_connections.append(websocket)
+    mqtt_websocket_manager.list_channel["mqtt2"] = websocket
+    try:
+        # Gửi thông báo kết nối thành công
+        await websocket.send_json({
+            "type": "mqtt_connection",
+            "status": "connected",
+            "message": "Connected to MQTT WebSocket endpoint"
+        })
+        
+        # Giữ kết nối mở
+        while True:
+            # Chờ tin nhắn từ client (nếu cần)
+            data = await websocket.receive_text()
+            # Xử lý tin nhắn từ client nếu cần
+            print(f"Received message from MQTT WebSocket client")
+    except WebSocketDisconnect:
+        print(f"Client disconnected from MQTT websocket: {client_host}:{client_port}")
+        # Xóa websocket khỏi danh sách kết nối
+        if websocket in mqtt_websocket_manager.active_connections:
+            mqtt_websocket_manager.active_connections.remove(websocket)
+    except Exception as e:
+        print(f"MQTT WebSocket error: {e}")
+        # Xóa websocket khỏi danh sách kết nối trong trường hợp lỗi
+        if hasattr(mqtt_websocket_manager, "active_connections"):
+            if websocket in mqtt_websocket_manager.active_connections:
+                mqtt_websocket_manager.active_connections.remove(websocket)
 @app.on_event("shutdown")
 async def shutdown_event():
     """Cleanup on shutdown"""

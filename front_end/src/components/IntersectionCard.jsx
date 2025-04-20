@@ -78,13 +78,15 @@ const IntersectionCard = ({ feed }) => {
         };
     }, []);
     useEffect(()=>{
-        const mqttUrl = 'http://localhost:8080/ws/mqtt'
-        const ws = new WebSocket(mqttUrl);
-        ws.onopen = () => {
+        const mqttUrl1 = 'http://localhost:8080/ws/mqtt1'
+        const mqttUrl2 = 'http://localhost:8080/ws/mqtt2'
+        const ws1 = new WebSocket(mqttUrl1);
+        const ws2 = new WebSocket(mqttUrl2);
+        ws1.onopen = () => {
             console.log('WebSocket connection opened');
             setDownByClass([]);
         };
-        ws.onmessage = (event) => {
+        ws1.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
                 const {messages} = data;
@@ -104,14 +106,47 @@ const IntersectionCard = ({ feed }) => {
                 console.error('Error processing WebSocket message:', err);
             }
         };
-        ws.onerror = (event) => {
+        ws1.onerror = (event) => {
             console.error('WebSocket error observed:', event);
         };
-        ws.onclose = (event) => {
+        ws1.onclose = (event) => {
             console.log(`WebSocket closed: Code=${event.code}, Reason=${event.reason}, WasClean=${event.wasClean}`);
         };
+
+        ws2.onopen = () => {
+            console.log('WebSocket connection opened');
+            setDownByClass([]);
+        };
+        ws2.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                const {messages} = data;
+                console.log('messages', messages);
+                if (messages) {
+                    messages.forEach(value => {
+                        if(parseInt(value?.road) === 1){
+                            setLight({...light, left: value});
+                        }
+                        else if(parseInt(value?.road) === 2){
+                            setLight({...light, right: value});
+                        }
+                    });
+                }
+                console.log('Received data MQTT:', data);
+            } catch (err) {
+                console.error('Error processing WebSocket message:', err);
+            }
+        };
+        ws2.onerror = (event) => {
+            console.error('WebSocket error observed:', event);
+        };
+        ws2.onclose = (event) => {
+            console.log(`WebSocket closed: Code=${event.code}, Reason=${event.reason}, WasClean=${event.wasClean}`);
+        };
+
         return () => {
-            ws.close();
+            ws1.close();
+            ws2.close();
         };
     },[])
     // console.log('light', light);
@@ -171,7 +206,10 @@ const IntersectionCard = ({ feed }) => {
                     {/* Green bounding boxes overlay */}
 
                     {/* Traffic Light Component for second view */}
-                    <TrafficLight light={light.left} />
+                    {
+                        console.log("light", light.right)
+                    }
+                    <TrafficLight light={light.right} />
                 </div>
             </div>
 

@@ -6,7 +6,7 @@ from database import get_database
 from datetime import datetime
 from models import TrafficLight, TrafficLightLog
 import time
-
+from websocket_manager import WebSocketManager
 lastest_mqtt_messages = {}
 dem = {}
 async def handle_sub_message(topic, message):
@@ -23,7 +23,7 @@ async def handle_sub_message(topic, message):
         if(content in ["ON", "OFF"]):
             existing_traffic_light = await _db.get_traffic_light_status(color, road)
             if existing_traffic_light:
-                success = await _db.update_traffic_light_status(color, content, int(timeDuration), road)
+                success = await _db.update_traffic_light_status(color, content, int(timeDuration), str(road))
                 if success:
                     print(f"Đèn {color} đã được cập nhật trạng thái thành {content}")
                 else:
@@ -55,7 +55,7 @@ async def handle_sub_message(topic, message):
         print("Error handling MQTT message:", e)
 
 class MQTTClient:
-    def __init__(self, loop: asyncio.AbstractEventLoop, websocket_manager=None):
+    def __init__(self, loop: asyncio.AbstractEventLoop, websocket_manager: WebSocketManager):
         self.client = mqtt.Client()
         self.client.on_connect = self.on_connect
         self.client.on_message = self.on_message
@@ -98,7 +98,7 @@ class MQTTClient:
                 
                 # Gửi đến tất cả clients
                 if formatted_messages:
-                    await self.websocket_manager.broadcast({
+                    await self.websocket_manager.broadcastMQTT( "mqtt" + str(road), {
                         "type": "mqtt_update",
                         "timestamp": datetime.now().isoformat(),
                         "messages": formatted_messages
