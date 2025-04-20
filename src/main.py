@@ -420,8 +420,16 @@ async def get_count_history(processor_id: int):
 # endpoint to change traffic cycles
 @app.post("/api/cycle")
 async def change_cycle(message: str):
-    mqtt_client.publish(settings.mqtt_topic_pub, message)
-    return {f"message_pub to {settings.mqtt_topic_pub}": message}
+    greenTime1, redTime1 = map(int, message.split(","))
+    yellowTime1 = 3
+    redTime2 = greenTime1 + yellowTime1
+    yellowTime2 = 3
+    greenTime2 = redTime1 - yellowTime1
+    message1 = f"1,{greenTime1*1000},{yellowTime1*1000},{redTime1*1000}"
+    message2 = f"2,{greenTime2*1000},{yellowTime2*1000},{redTime2*1000}"
+    mqtt_client.publish(settings.mqtt_topic_pub, message1)
+    mqtt_client.publish(settings.mqtt_topic_pub, message2)
+    return {f"message_pub to {settings.mqtt_topic_pub}"}
 
 
 # WebSocket endpoints for both cameras
@@ -517,6 +525,7 @@ async def websocket_mqtt_endpoint(websocket: WebSocket):
         if hasattr(mqtt_websocket_manager, "active_connections"):
             if websocket in mqtt_websocket_manager.active_connections:
                 mqtt_websocket_manager.active_connections.remove(websocket)
+                mqtt_websocket_manager.list_channel.pop("mqtt1")
 
 # WebSocket endpoint for MQTT data
 @app.websocket("/ws/mqtt2")
@@ -557,6 +566,7 @@ async def websocket_mqtt_endpoint(websocket: WebSocket):
         if hasattr(mqtt_websocket_manager, "active_connections"):
             if websocket in mqtt_websocket_manager.active_connections:
                 mqtt_websocket_manager.active_connections.remove(websocket)
+                mqtt_websocket_manager.list_channel.pop("mqtt2")
 @app.on_event("shutdown")
 async def shutdown_event():
     """Cleanup on shutdown"""

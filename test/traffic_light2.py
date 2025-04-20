@@ -20,9 +20,10 @@ MQTT_PUB_TOPIC = "traffic_lights/noti"
 ROAD = "2"
 
 # Chu kỳ mặc định (ms)
-RED_TIME = 30000
-YELLOW_TIME = 5000
-GREEN_TIME = 20000
+RED_TIME = 23000
+YELLOW_TIME = 3000
+GREEN_TIME = 27000
+
 
 # Chu kỳ mới
 NEW_RED_TIME = RED_TIME
@@ -36,8 +37,8 @@ class TrafficState:
     YELLOW = "YELLOW"
     GREEN = "GREEN"
 
-current_state = TrafficState.RED
-countdown = RED_TIME // 1000
+current_state = TrafficState.GREEN
+countdown = GREEN_TIME // 1000
 last_pub_time = time.time()
 client = mqtt.Client()
 
@@ -118,7 +119,7 @@ def on_message(client, userdata, msg):
     except Exception as e:
         print("Lỗi khi phân tích chuỗi:", e)
  
-def traffic_loop():
+def traffic_loop2():
     global countdown
     global last_pub_time
     while True:
@@ -135,7 +136,7 @@ def traffic_loop():
             countdown -= 1
         time.sleep(1)
 
-def mqtt_loop():
+def mqtt_loop2():
     client.connect(MQTT_BROKER, MQTT_PORT, 60)
     client.subscribe(MQTT_SUB_TOPIC)
     pub_status_all(f"{current_state}")
@@ -145,5 +146,5 @@ client.on_message = on_message
 
 if __name__ == "__main__":
     print("Khởi động mô phỏng đèn giao thông...")
-    threading.Thread(target=mqtt_loop, daemon=True).start()
-    traffic_loop()
+    threading.Thread(target=mqtt_loop2, daemon=True).start()
+    traffic_loop2()

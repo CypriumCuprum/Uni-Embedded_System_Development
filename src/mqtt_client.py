@@ -36,7 +36,7 @@ async def handle_sub_message(topic, message):
                     timeDuration=int(timeDuration)
                 )
                 await _db.save_traffic_light_status(trafficLight)
-                print("Trạng thái đèn giao thông đã được lưu:", trafficLight)
+                # print("Trạng thái đèn giao thông đã được lưu:", trafficLight)
         else:
             status = "ON"
             if(int(content) == 0):
@@ -98,7 +98,7 @@ class MQTTClient:
                 
                 # Gửi đến tất cả clients
                 if formatted_messages:
-                    await self.websocket_manager.broadcastMQTT( "mqtt" + str(road), {
+                    await self.websocket_manager.broadcast( {
                         "type": "mqtt_update",
                         "timestamp": datetime.now().isoformat(),
                         "messages": formatted_messages
@@ -111,7 +111,6 @@ class MQTTClient:
     def connect(self):
         self.client.connect(settings.mqtt_broker, settings.mqtt_port, 60)
         self.thread.start()
-
         if self.websocket_manager:
             print("Starting periodic websocket update task")
             self.timer_task = asyncio.run_coroutine_threadsafe(
@@ -131,12 +130,13 @@ class MQTTClient:
         topic = msg.topic
         message = msg.payload.decode()
         # nhận message dạng "ROAD,COLOR,timeDuration,content" phần content có thể là trạng thái ON/OFF của đèn hoặc là thời gian còn lại của đèn
-        print(f"MQTT Message received on topic {topic}: {message}")
-        lastest_mqtt_messages[topic] = message
+        # print(f"MQTT Message received on topic {topic}: {message}")
+        road = message.split(",")[0]
+        lastest_mqtt_messages[road] = message
         road, color, timeDuration, content = message.split(",")
         if(content not in ["ON", "OFF"]):
-            dem[topic] = int(content)
-            print("đếm với topic", topic, "thời gian còn lại", dem[topic])
+            dem[road] = int(content)
+            print("đếm với topic", road, "thời gian còn lại", dem[road])
 
         asyncio.run_coroutine_threadsafe(
             handle_sub_message(topic, message),

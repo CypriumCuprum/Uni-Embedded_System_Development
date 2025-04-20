@@ -14,11 +14,8 @@ const IntersectionCard = ({ feed }) => {
     const [pendingCycleDuration, setPendingCycleDuration] = useState(10);
     const [cycleUpdatePending, setCycleUpdatePending] = useState(false);
     const [inputValue, setInputValue] = useState(cycleDuration);
-    const [dataSocket, setDataSocket] = useState({})
-    const [light,setLight] = useState({
-        left: {},
-        right: {},
-    }) // Default input value
+    const [light1, setLight1] = useState({})
+    const [light2, setLight2] = useState({})
     useEffect(() => {
         const wsUrl = `http://localhost:8080/ws/stats/1`;
         console.log(`Attempting to connect WebSocket to: ${wsUrl}`);
@@ -94,10 +91,7 @@ const IntersectionCard = ({ feed }) => {
                 if (messages) {
                     messages.forEach(value => {
                         if(parseInt(value?.road) === 1){
-                            setLight({...light, left: value});
-                        }
-                        else if(parseInt(value?.road) === 2){
-                            setLight({...light, right: value});
+                            setLight1(value);
                         }
                     });
                 }
@@ -124,11 +118,8 @@ const IntersectionCard = ({ feed }) => {
                 console.log('messages', messages);
                 if (messages) {
                     messages.forEach(value => {
-                        if(parseInt(value?.road) === 1){
-                            setLight({...light, left: value});
-                        }
-                        else if(parseInt(value?.road) === 2){
-                            setLight({...light, right: value});
+                        if(parseInt(value?.road) === 2){
+                            setLight2( value);
                         }
                     });
                 }
@@ -190,7 +181,7 @@ const IntersectionCard = ({ feed }) => {
                     {/* Green bounding boxes overlay */}
 
                     {/* Traffic Light Component for first view */}
-                    <TrafficLight light = {light.left} />
+                    <TrafficLight light = {light1} />
                 </div>
 
                 {/* Second Camera Feed */}
@@ -207,9 +198,9 @@ const IntersectionCard = ({ feed }) => {
 
                     {/* Traffic Light Component for second view */}
                     {
-                        console.log("light", light.right)
+                        console.log("light", light2)
                     }
-                    <TrafficLight light={light.right} />
+                    <TrafficLight light={light2} />
                 </div>
             </div>
 
@@ -275,7 +266,7 @@ const IntersectionCard = ({ feed }) => {
                 </div>
                 <div className="feed-detail">Lưu lượng: {totalDown}</div>
                 <div className="feed-detail">FPS: {fps}</div>
-                <div className='feed-detail'>Thời gian: {light.left?.content} </div>
+                <div className='feed-detail'>Thời gian: {light1?.content} </div>
 
                 <Box className="traffic-control" sx={{ mt: 2 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, justifyContent: 'space-between' }}>

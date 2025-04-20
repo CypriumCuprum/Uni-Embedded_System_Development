@@ -14,16 +14,22 @@ class WebSocketManager:
         self.active_connections.remove(websocket)
 
     async def broadcast(self, message: Dict):
+        if(not self.active_connections):
+            return
         for connection in self.active_connections:
             try:
+                print("check connections")
                 await connection.send_json(message)
             except Exception as e:
                 print(f"Error broadcasting to client: {e}")
                 await self.disconnect(connection)
 
     async def broadcastMQTT(self, channel: str, message: Dict):
-        webSocket = self.list_channel[channel]
-        print(webSocket)
+        webSocket = self.list_channel.get(channel)
+        if not webSocket:
+            print(f"Channel '{channel}' not found")
+            return
+
         try:
             await webSocket.send_json(message)
         except Exception as e:
