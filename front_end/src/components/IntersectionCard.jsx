@@ -10,10 +10,11 @@ const IntersectionCard = ({ feed }) => {
     const [fps, setFps] = useState('N/A');
     const [downByClass, setDownByClass] = useState([]);
     const [isAutoMode, setIsAutoMode] = useState(true);
-    const [cycleDuration, setCycleDuration] = useState(10); // Default cycle duration in seconds
+    const [cycleDuration, setCycleDuration] = useState(0); // Default cycle duration in seconds
     const [pendingCycleDuration, setPendingCycleDuration] = useState(10);
     const [cycleUpdatePending, setCycleUpdatePending] = useState(false);
-    const [inputValue, setInputValue] = useState(cycleDuration);
+    const [inputGreen, setInputGreen] = useState('');
+    const [inputRed, setInputRed] = useState('');
     const [light1, setLight1] = useState({})
     const [light2, setLight2] = useState({})
     useEffect(() => {
@@ -147,13 +148,37 @@ const IntersectionCard = ({ feed }) => {
     };
 
     const handleInputChange = (e) => {
-        setInputValue(e.target.value);
+        if (e.target.name === 'green') {
+            setInputGreen(e.target.value);
+        }
+        if (e.target.name === 'red') {
+            setInputRed(e.target.value);
+        }
     };
-    const handleConfirmCycle = () => {
-        if (inputValue > 0) {
+    const handleConfirmCycle = async () => {
+        const greenCycle = parseInt(inputGreen);
+        const redCycle = parseInt(inputRed);
+        if ( greenCycle> 0 && redCycle > 0) {
+            const inputValue = greenCycle + ',' + redCycle;
             setCycleUpdatePending(true);
-            setPendingCycleDuration(inputValue);
-            console.log('Cycle duration set to:', inputValue);
+            const res = await fetch(`http://localhost:8080/api/cycle?message=${inputValue}`, {
+                method: 'POST',
+                // headers: {
+                //     'Content-Type': 'application/json',
+                // },
+                // body: JSON.stringify({ green: greenCycle, red: redCycle }),
+            });
+            if (res.ok) {
+                console.log('Cycle duration updated successfully');
+            } else {
+                console.error('Error updating cycle duration:', res.statusText);
+            }
+            setInputGreen('');
+            setInputRed('');
+            setCycleUpdatePending(false);
+            // setCycleUpdatePending(true);
+            // setPendingCycleDuration(inputValue);
+            // console.log('Cycle duration set to:', inputValue);
         }
     };
     // console.log('pendingCycleDuration ', pendingCycleDuration);
@@ -161,7 +186,7 @@ const IntersectionCard = ({ feed }) => {
         if (cycleUpdatePending) {
             setCycleDuration(pendingCycleDuration);
             setCycleUpdatePending(false);
-            setInputValue(pendingCycleDuration);
+            // setInputValue(pendingCycleDuration);
         }
     };
     return (
@@ -297,14 +322,24 @@ const IntersectionCard = ({ feed }) => {
                         >
                             <Stack direction="row" spacing={1} alignItems="center" marginTop={1}>
                                 <TextField
-                                    label="Chu kỳ đèn (giây)"
+                                    label="Chu kỳ đèn xanh (giây)"
+                                    name='green'
                                     type="number"
                                     size="small"
-                                    value={inputValue}
+                                    value={inputGreen}
                                     onChange={handleInputChange}
-                                    sx={{ width: '300px' }}
+                                    sx={{ width: '250px' }}
                                 />
-                                <Button variant="contained" size="small" color="primary" onClick={handleConfirmCycle}>
+                                <TextField
+                                    label="Chu kỳ đèn đỏ (giây)"
+                                    name='red'
+                                    type="number"
+                                    size="small"
+                                    value={inputRed}
+                                    onChange={handleInputChange}
+                                    sx={{ width: '250px' }}
+                                />
+                                <Button variant="contained" size="small" color="primary" style={{fontSize:12}} onClick={handleConfirmCycle}>
                                     Xác nhận
                                 </Button>
                             </Stack>
