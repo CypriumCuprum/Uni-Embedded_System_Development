@@ -66,15 +66,9 @@ async def startup_event():
         video_processor2.set_counting_line(line_start, line_end)
 
         # Start processing video streams
-<<<<<<< HEAD
         stream_url1 = "D:\\BTL_Nhung1\\Uni-Embedded_System_Development\\video\\vehicles.mp4"
         # stream_url2 = "D:\\BTL_Nhung1\\Uni-Embedded_System_Development\\video\\vehicles.mp4"
         stream_url2 = "http://192.168.1.152:8080/?action=stream" 
-=======
-        stream_url1 = settings.video_url
-        stream_url2 = settings.video_url
-        # stream_url2 = "http://192.168.1.152:8080/?action=stream"
->>>>>>> 33d1713e0e309d942164ee6969211e288d840bad
 
         await video_processor1.start_stream(stream_url1)
         await video_processor2.start_stream(stream_url2)
