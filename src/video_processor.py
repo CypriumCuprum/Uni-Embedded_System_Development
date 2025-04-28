@@ -55,6 +55,7 @@ class VideoProcessor:
         self.frame_count = 0
         self.start_time = None
         self.fps = 0
+        self.counts_all = 0
 
         # --- Cấu trúc đếm mới ---
         self.counts: Dict[str, any] = {
@@ -162,6 +163,7 @@ class VideoProcessor:
                         class_name = self.class_names[class_id]
                         self.counts['down_by_class'][class_name] += 1
                         self.counts['total_down'] += 1
+                        self.counts_all += 1
                         self.crossed_down_ids.add(tracker_id) # Đánh dấu ID này đã đi qua
                         current_crossed_ids_in_frame.add(tracker_id) # Đánh dấu ID vừa qua trong frame này
                         print(f"Vehicle crossed down: ID {tracker_id}, Type: {class_name}, Total Down: {self.counts['total_down']}") # Log
