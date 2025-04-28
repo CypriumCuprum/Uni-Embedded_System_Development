@@ -130,8 +130,8 @@ def traffic_loop2():
             last_pub_time = now
         else:
             print(f"{current_state} - Còn lại: {countdown} giây")
+            pub_noti()
             if(now - last_pub_time >= 5):
-                pub_noti()
                 last_pub_time = now
             countdown -= 1
         time.sleep(1)
