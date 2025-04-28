@@ -9,13 +9,24 @@ import time
 from websocket_manager import WebSocketManager
 lastest_mqtt_messages = {}
 dem = {}
-async def handle_sub_message(topic, message):
+async def handle_sub_message(topic, message,websocket: WebSocketManager):
     try:
         # global lastest_mqtt_messages
         # global dem
         # lastest_mqtt_messages[topic] = message
         _db = get_database()
         road, color, timeDuration, content = message.split(",")
+        if content not in ('ON','OFF'):
+            if(websocket):
+                await websocket.broadcast({"messages":[{
+                
+                    "topic": topic,
+                    "road": road,
+                    "color": color,
+                    "timeDuration": timeDuration,
+                    "content": content,
+                
+                }]})
         # if(content not in ["ON", "OFF"]):
         #     dem[topic] = int(content)
         #     print("đếm với topic", topic, "thời gian còn lại", dem[topic])
@@ -111,12 +122,12 @@ class MQTTClient:
     def connect(self):
         self.client.connect(settings.mqtt_broker, settings.mqtt_port, 60)
         self.thread.start()
-        if self.websocket_manager:
-            print("Starting periodic websocket update task")
-            self.timer_task = asyncio.run_coroutine_threadsafe(
-                self._periodic_websocket_update(), 
-                self.loop
-            )
+        # if self.websocket_manager:
+            # print("Starting periodic websocket update task")
+            # self.timer_task = asyncio.run_coroutine_threadsafe(
+            #     self._periodic_websocket_update(), 
+            #     self.loop
+            # )
 
     def _start_loop(self):
         self.client.loop_forever()
@@ -138,8 +149,9 @@ class MQTTClient:
             dem[road] = int(content)
             print("đếm với topic", road, "thời gian còn lại", dem[road])
 
+
         asyncio.run_coroutine_threadsafe(
-            handle_sub_message(topic, message),
+            handle_sub_message(topic, message, self.websocket_manager),
             self.loop
         )
 
