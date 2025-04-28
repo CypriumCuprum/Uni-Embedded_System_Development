@@ -27,6 +27,21 @@ class Database:
         }).sort("timestamp", -1)
         counts = await cursor.to_list(length=None)
         return [VehicleCount(**count) for count in counts]
+    
+    async def get_total_flow_time_from_to(self, start_time: datetime, end_time: datetime):
+        cursor = self.counts.find({
+            "timestamp": {
+                "$gte": start_time,
+                "$lte": end_time
+            },
+            "vehicle_type": "all_down"
+        }). sort("timestamp",-1)
+
+        counts = await cursor.to_list(length=None)
+        counts_start = counts[0].count
+        counts_end = counts[-1].cout
+        return counts_end - counts_start
+
 
     async def save_traffic_light_status(self, status: TrafficLight):
         await self.traffic_light.insert_one(status.dict())

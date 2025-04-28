@@ -12,7 +12,7 @@ import asyncio
 import os
 from pydantic import BaseModel
 from mqtt_client import MQTTClient
-
+from light_controller import Light_Controller
 # Get the base directory
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -36,6 +36,8 @@ video_processor2 = VideoProcessor(stream_port=PORT1)
 loop = asyncio.get_event_loop()
 mqtt_websocket_manager = WebSocketManager()
 mqtt_client = MQTTClient(loop,mqtt_websocket_manager)
+
+light_controller = Light_Controller(mqtt=mqtt_client, is_auto=False)
 
 
 # Define request models
@@ -64,9 +66,15 @@ async def startup_event():
         video_processor2.set_counting_line(line_start, line_end)
 
         # Start processing video streams
+<<<<<<< HEAD
         stream_url1 = "D:\\BTL_Nhung1\\Uni-Embedded_System_Development\\video\\vehicles.mp4"
         # stream_url2 = "D:\\BTL_Nhung1\\Uni-Embedded_System_Development\\video\\vehicles.mp4"
         stream_url2 = "http://192.168.1.152:8080/?action=stream" 
+=======
+        stream_url1 = settings.video_url
+        stream_url2 = settings.video_url
+        # stream_url2 = "http://192.168.1.152:8080/?action=stream"
+>>>>>>> 33d1713e0e309d942164ee6969211e288d840bad
 
         await video_processor1.start_stream(stream_url1)
         await video_processor2.start_stream(stream_url2)
@@ -308,6 +316,17 @@ async def root():
     """
     return HTMLResponse(content=html_content)
 
+@app.post("/auto_control")
+async def auto_control(is_auto:bool):
+    if is_auto is None:
+        raise HTTPException(status_code=400, detail="Khong biet")
+    light_controller.is_auto = is_auto
+    try:
+        await light_controller.control(video_processor1=video_processor1, video_processor2=video_processor2, topic=settings.mqtt_topic_pub)
+    except:
+        raise HTTPException(status_code=400, detail="Khong biet")
+    return {"status": 200, "messsage":"auto ok"}
+    
 
 # Stream endpoints for both cameras
 @app.get("/stream1.mjpg")
@@ -567,6 +586,9 @@ async def websocket_mqtt_endpoint(websocket: WebSocket):
             if websocket in mqtt_websocket_manager.active_connections:
                 mqtt_websocket_manager.active_connections.remove(websocket)
                 mqtt_websocket_manager.list_channel.pop("mqtt2")
+
+
+
 @app.on_event("shutdown")
 async def shutdown_event():
     """Cleanup on shutdown"""
