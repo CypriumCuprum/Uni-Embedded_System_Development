@@ -1,10 +1,10 @@
-from fastapi import FastAPI, WebSocket, HTTPException, Body, WebSocketDisconnect
+from fastapi import Depends, FastAPI, WebSocket, HTTPException, Body, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, HTMLResponse
 from typing import List, Dict, Tuple
 import uvicorn
 from config import settings
-from database import get_database
+from database import Database, get_database
 from models import VehicleCount, AreaConfig, CountingLineConfig
 from video_processor import VideoProcessor
 from websocket_manager import WebSocketManager
@@ -13,6 +13,12 @@ import os
 from pydantic import BaseModel
 from mqtt_client import MQTTClient
 from light_controller import Light_Controller
+from pydantic import BaseModel, Field
+from typing import List, Optional
+from bson import ObjectId
+from datetime import datetime
+import config
+from models import Road, Device, PyObjectId
 # Get the base directory
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -39,6 +45,9 @@ mqtt_client = MQTTClient(loop,mqtt_websocket_manager)
 
 light_controller = Light_Controller(mqtt=mqtt_client, is_auto=False)
 
+# Database dependency
+async def get_db():
+    return get_database()
 
 # Define request models
 class CountingLineRequest(BaseModel):
@@ -66,9 +75,9 @@ async def startup_event():
         video_processor2.set_counting_line(line_start, line_end)
 
         # Start processing video streams
-        stream_url1 = "D:\\BTL_Nhung1\\Uni-Embedded_System_Development\\video\\vehicles.mp4"
-        # stream_url2 = "D:\\BTL_Nhung1\\Uni-Embedded_System_Development\\video\\vehicles.mp4"
-        stream_url2 = "http://192.168.1.152:8080/?action=stream" 
+        stream_url1 = settings.video_url
+        stream_url2 = settings.video_url
+        # stream_url2 = "http://192.168.1.152:8080/?action=stream" 
 
         await video_processor1.start_stream(stream_url1)
         await video_processor2.start_stream(stream_url2)
@@ -581,7 +590,123 @@ async def websocket_mqtt_endpoint(websocket: WebSocket):
                 mqtt_websocket_manager.active_connections.remove(websocket)
                 mqtt_websocket_manager.list_channel.pop("mqtt2")
 
+# ========== Road Endpoints ==========
 
+@app.get("/api/roads", response_model=List[Road])
+async def list_roads(db: Database = Depends(get_db)):
+    roads = await db.get_all_roads()
+    return roads
+
+@app.post("/api/roads", response_model=Road)
+async def create_road(road: Road, db: Database = Depends(get_db)):
+    road_dict = road.dict(exclude={"id"})
+    # Remove any None values for MongoDB
+    road_dict = {k: v for k, v in road_dict.items() if v is not None}
+    
+    # Create the road
+    created_road = await db.create_road(road_dict)
+    return created_road
+
+@app.get("/api/roads/{road_id}", response_model=Road)
+async def get_road(road_id: str, db: Database = Depends(get_db)):
+    road = await db.get_road_by_id(road_id)
+    if not road:
+        raise HTTPException(status_code=404, detail="Road not found")
+    return road
+
+@app.put("/api/roads/{road_id}", response_model=Road)
+async def update_road(road_id: str, road: Road, db: Database = Depends(get_db)):
+    # Check if road exists
+    existing_road = await db.get_road_by_id(road_id)
+    if not existing_road:
+        raise HTTPException(status_code=404, detail="Road not found")
+    
+    # Prepare data for update
+    road_dict = road.dict(exclude={"id"})
+    road_dict = {k: v for k, v in road_dict.items() if v is not None}
+    
+    # Update the road
+    updated_road = await db.update_road(road_id, road_dict)
+    if not updated_road:
+        raise HTTPException(status_code=500, detail="Failed to update road")
+    return updated_road
+
+@app.delete("/api/roads/{road_id}")
+async def delete_road(road_id: str, db: Database = Depends(get_db)):
+    # Check if road exists
+    existing_road = await db.get_road_by_id(road_id)
+    if not existing_road:
+        raise HTTPException(status_code=404, detail="Road not found")
+    
+    # Delete the road
+    success = await db.delete_road(road_id)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to delete road")
+    return {"message": "Road successfully deleted"}
+
+# ========== Device Endpoints ==========
+
+@app.get("/api/devices", response_model=List[Device])
+async def list_devices(db: Database = Depends(get_db)):
+    devices = await db.get_all_devices()
+    return devices
+
+@app.post("/api/devices", response_model=Device)
+async def create_device(device: Device, db: Database = Depends(get_db)):
+    # Check if road exists
+    road = await db.get_road_by_id(device.road_id)
+    if not road:
+        raise HTTPException(status_code=404, detail=f"Road with ID {device.road_id} not found")
+    
+    device_dict = device.dict(exclude={"id"})
+    # Remove any None values for MongoDB
+    device_dict = {k: v for k, v in device_dict.items() if v is not None}
+    
+    # Create the device
+    created_device = await db.create_device(device_dict)
+    return created_device
+
+@app.get("/api/devices/{device_id}", response_model=Device)
+async def get_device(device_id: str, db: Database = Depends(get_db)):
+    device = await db.get_device_by_id(device_id)
+    if not device:
+        raise HTTPException(status_code=404, detail="Device not found")
+    return device
+
+@app.put("/api/devices/{device_id}", response_model=Device)
+async def update_device(device_id: str, device: Device, db: Database = Depends(get_db)):
+    # Check if device exists
+    existing_device = await db.get_device_by_id(device_id)
+    if not existing_device:
+        raise HTTPException(status_code=404, detail="Device not found")
+    
+    # Check if road exists
+    road = await db.get_road_by_id(device.road_id)
+    if not road:
+        raise HTTPException(status_code=404, detail=f"Road with ID {device.road_id} not found")
+    
+    # Prepare data for update
+    device_dict = device.dict(exclude={"id"})
+    device_dict = {k: v for k, v in device_dict.items() if v is not None}
+    
+    # Update the device
+    updated_device = await db.update_device(device_id, device_dict)
+    if not updated_device:
+        raise HTTPException(status_code=500, detail="Failed to update device")
+    return updated_device
+
+@app.delete("/api/devices/{device_id}")
+async def delete_device(device_id: str, db: Database = Depends(get_db)):
+    # Check if device exists
+    existing_device = await db.get_device_by_id(device_id)
+    if not existing_device:
+        raise HTTPException(status_code=404, detail="Device not found")
+    
+    # Delete the device
+    success = await db.delete_device(device_id)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to delete device")
+    return {"message": "Device successfully deleted"}
 
 @app.on_event("shutdown")
 async def shutdown_event():
