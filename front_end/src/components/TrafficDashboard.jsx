@@ -22,13 +22,13 @@ const TrafficDashboard = () => {
         <div className="dashboard">
             {/* Header */}
             <header className="header">
-                <div className="nav-items">
+                {/* <div className="nav-items">
                     <div className="nav-item active">Giao thông</div>
                     <div className="nav-item">Dashboard</div>
                     <div className="nav-item">Thiết bị</div>
                     <div className="nav-item">Quản lý người dùng</div>
-                </div>
-                <div className="header-actions">
+                </div> */}
+                {/* <div className="header-actions">
                     <button className="icon-button">
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -43,7 +43,7 @@ const TrafficDashboard = () => {
                             />
                         </svg>
                     </button>
-                </div>
+                </div> */}
             </header>
 
             {/* Sub Header */}
