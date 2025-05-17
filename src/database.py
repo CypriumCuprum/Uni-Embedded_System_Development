@@ -1,7 +1,10 @@
+import asyncio
+
 from motor.motor_asyncio import AsyncIOMotorClient
 from datetime import datetime
 from typing import List
-from models import VehicleCount, TrafficLight, TrafficLightLog
+from models import VehicleCount, TrafficLight, TrafficLightLog, AggregatedVehicleCount
+from typing import Optional, Tuple
 
 class Database:
     def __init__(self, connection_string: str):
@@ -10,6 +13,7 @@ class Database:
         self.counts = self.db.vehicle_counts
         self.traffic_light = self.db.traffic_light
         self.traffic_light_log = self.db.traffic_light_log
+        self.aggregated_counts = self.db.aggregated_vehicle_counts
         self.roads = self.db.roads
         self.devices = self.db.devices
     async def save_vehicle_count(self, count: VehicleCount):
@@ -181,6 +185,114 @@ class Database:
         result = await self.devices.delete_one({"_id": ObjectId(device_id)})
         return result.deleted_count > 0
 
+    async def get_device_by_road_id(self, road_id: str) -> dict:
+        cursor = self.devices.find({"road_id": road_id})
+        devices = await cursor.to_list(length=100)
+        for device in devices:
+            device["id"] = str(device["_id"])
+        return devices
+    
+    # Dong thêm các hàm liên quan đến aggregated vehicle counts
+
+    async def get_all_cameras(self) -> List[dict]:
+        cursor = self.devices.find({"type": "camera"})
+        cameras = await cursor.to_list(length=100)
+        for camera in cameras:
+            camera["id"] = str(camera["_id"])
+        return cameras
+
+    
+    async def save_aggregated_vehicle_count(self, agg_count_data: AggregatedVehicleCount):
+        """Lưu trữ bản ghi đếm xe gộp."""
+        # Chuyển Pydantic model thành dict, sử dụng alias nếu có
+        await self.aggregated_counts.insert_one(agg_count_data.dict(by_alias=True))
+        
+    async def get_aggregated_counts_for_device_in_range(
+        self,
+        device_name: str,
+        start_time: datetime,
+        end_time: datetime
+    ) -> List[AggregatedVehicleCount]: # Trả về list các Pydantic model
+        """
+        Lấy các bản ghi đếm gộp cho một thiết bị trong một khoảng thời gian.
+        Sắp xếp theo timestamp tăng dần để dễ xử lý delta.
+        """
+        cursor = self.aggregated_counts.find({
+            "deviceName": device_name,
+            "timestamp": {
+                "$gte": start_time,
+                "$lte": end_time
+            }
+        }).sort("timestamp", 1) # Sắp xếp TĂNG DẦN (ASC)
+        
+        docs = await cursor.to_list(length=None)
+        # Chuyển đổi các dict từ MongoDB thành Pydantic model
+        return [AggregatedVehicleCount(**doc) for doc in docs]
+
+    async def get_aggregated_counts_for_a_road(
+        self,
+        road_id: str,
+        limit: int = 60
+    ):
+        """
+        Khi có road id -> get all device with type camera from database have road_id
+        """
+        cursor = self.devices.find({"road_id": road_id, "type": "camera"})
+        cameras = await cursor.to_list(length=limit)
+        dict_result = {
+            "North": [],
+            "South": [],
+            "East": [],
+            "West": []
+        }
+        for camera in cameras:
+            # get all aggregated vehicle counts from camera_id
+            camera_id = camera["device_id"]
+            print(camera_id)
+            cursor = self.aggregated_counts.find({
+                "deviceID": camera_id,
+            }).sort("timefrom", -1).limit(limit)
+            docs = await cursor.to_list(length=limit)
+            dict_result[camera["direction_from"]].extend([AggregatedVehicleCount(**doc) for doc in docs])
+        return dict_result
+
+    async def get_aggregated_counts_for_a_road_and_compute_vehicle_per_hour(
+        self,
+        road_id: str,
+        limit: int = 60
+    ):
+        """
+        Khi có road id -> get all device with type camera from database have road_id
+        """
+        cursor = self.devices.find({"road_id": road_id, "type": "camera"})
+        cameras = await cursor.to_list(length=limit)
+        dict_result = {
+            "North-South": 0,
+            "East-West": 0
+        }
+        dict_lane = {
+            "North": 0,
+            "South": 0,
+            "East": 0,
+            "West": 0
+        }
+        for camera in cameras:
+            # get all aggregated vehicle counts from camera_id
+            camera_id = camera["device_id"]
+            print(camera_id)
+            cursor = self.aggregated_counts.find({
+                "deviceID": camera_id,
+            }).sort("timefrom", -1).limit(limit)
+            docs = await cursor.to_list(length=limit)
+            # compute sum or total count
+            for doc in docs:
+                dict_lane[doc["direction_from"]] += doc["totalCount"]
+
+        dict_result["North-South"] = dict_lane["North"] + dict_lane["South"]
+        dict_result["East-West"] = dict_lane["East"] + dict_lane["West"]
+        return dict_result
+
+
 # Global database instance
 _db = None
 
@@ -189,4 +301,16 @@ def get_database():
     if _db is None:
         from config import settings
         _db = Database(settings.mongodb_url)
-    return _db 
+    return _db
+
+if __name__ == "__main__":
+    db = get_database()
+    # Test the database connection
+    print("Database connected:", db.client is not None)
+
+    # Test get aggregated vehicle counts for a road need await
+    road_id = "68280ee3d81467bc1faa5567"  # Replace with a valid road ID
+
+    loop = asyncio.get_event_loop()
+    aggregated_counts = loop.run_until_complete(db.get_aggregated_counts_for_a_road(road_id))
+    print("Aggregated counts for road:", aggregated_counts)

@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     # Video processing settings
     frame_width: int = int(os.getenv("FRAME_WIDTH", "640"))
     frame_height: int = int(os.getenv("FRAME_HEIGHT", "480"))
+    frame_width2: int = int(os.getenv("FRAME_WIDTH2", "480"))
+    frame_height2: int = int(os.getenv("FRAME_HEIGHT2", "640"))
     fps: int = int(os.getenv("FPS", "30"))
     video_url: str = os.getenv("VIDEO_URL", "C:\\Users\\PC\\Documents\\Y4\\T8\\Embedding\\src\\Uni-Embedded_System_Development\\video\\vehicles.mp4")
     # ByteTrack settings

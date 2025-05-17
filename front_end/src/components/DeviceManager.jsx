@@ -14,11 +14,15 @@ const DeviceManager = () => {
         name: '',
         device_id: '',
         road_id: '',
-        type: 'camera',
+        type: 'camera', // Default type
         status: 'Active',
         ip_address: '',
-        location_details: ''
+        location_details: '',
+        direction_from: '', // New field
+        direction_to: ''    // New field
     });
+
+    const directions = ['North', 'South', 'East', 'West'];
 
     useEffect(() => {
         fetchDevices();
@@ -166,6 +170,46 @@ const DeviceManager = () => {
         return road ? road.name : 'Không xác định';
     };
 
+    const renderDirectionFields = () => {
+        if (formData.type !== 'camera') {
+            return null;
+        }
+        return (
+            <>
+                <div className="form-group">
+                    <label htmlFor="direction_from">Hướng từ (Direction From):</label>
+                    <select
+                        id="direction_from"
+                        name="direction_from"
+                        value={formData.direction_from}
+                        onChange={handleInputChange}
+                        // required // Make it required if a camera always needs this
+                    >
+                        <option value="">-- Chọn hướng --</option>
+                        {directions.map(dir => (
+                            <option key={`from-${dir}`} value={dir}>{dir}</option>
+                        ))}
+                    </select>
+                </div>
+                <div className="form-group">
+                    <label htmlFor="direction_to">Hướng đến (Direction To):</label>
+                    <select
+                        id="direction_to"
+                        name="direction_to"
+                        value={formData.direction_to}
+                        onChange={handleInputChange}
+                        // required // Make it required if a camera always needs this
+                    >
+                        <option value="">-- Chọn hướng --</option>
+                        {directions.map(dir => (
+                            <option key={`to-${dir}`} value={dir}>{dir}</option>
+                        ))}
+                    </select>
+                </div>
+            </>
+        );
+    };
+
     return (
         <div className="device-manager">
             <header className="manager-header">
@@ -298,6 +342,8 @@ const DeviceManager = () => {
                                     <option value="traffic_light">Đèn giao thông</option>
                                 </select>
                             </div>
+                            {/* Conditionally rendered direction fields */}
+                            {renderDirectionFields()}
                             <div className="form-group">
                                 <label htmlFor="ip_address">Địa chỉ IP:</label>
                                 <input
