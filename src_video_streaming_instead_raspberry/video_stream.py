@@ -10,15 +10,16 @@ app = Flask(__name__)
 # Global variables
 camera = None
 is_running = True
-frame_width = 1280
-frame_height = 720
-fps = 30
-port = 8080
+frame_width = 720
+frame_height = 1280
+fps = 25
+port = 8678
 
 def init_camera():
     """Initialize the camera"""
     global camera
-    camera = cv2.VideoCapture(0)  # 0 is usually the default webcam
+    # camera = cv2.VideoCapture(0)  # 0 is usually the default webcam
+    camera = cv2.VideoCapture("D:\CUPRUM\PTIT\Term_8\Embedded_System_Development\BE_AI\\video\\video_20250516_170346.mp4")  # Use the first camera device
     if not camera.isOpened():
         raise Exception("Could not open camera")
     # Set resolution and FPS
@@ -42,13 +43,13 @@ def generate_frames():
                frame_bytes + b'\r\n')
         time.sleep(1.0/fps)  # Maintain specified FPS
 
-@app.route('/stream.mjpg')
+@app.route('/')
 def stream():
     """Video streaming route"""
     return Response(generate_frames(),
                     mimetype='multipart/x-mixed-replace; boundary=boundary')
 
-@app.route('/')
+@app.route('/root')
 def index():
     """Serve a simple page with the video stream"""
     return """
@@ -76,7 +77,7 @@ def main():
                       help='Resolution (widthxheight)')
     parser.add_argument('-f', '--fps', type=int, default=30,
                       help='Frames per second')
-    parser.add_argument('-p', '--port', type=int, default=8080,
+    parser.add_argument('-p', '--port', type=int, default=8678,
                       help='Port number')
     
     args = parser.parse_args()

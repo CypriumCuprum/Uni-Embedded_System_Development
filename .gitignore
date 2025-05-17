@@ -7,5 +7,7 @@ src/yolov8s.pt
 src/yolov8x.pt
 video/output_processed.mp4
 video/Bellevue_116th_NE12th__2017-09-11_15-08-36.mp4
+video/video_20250516_165825.mp4
+video/video_20250516_170346.mp4
 src/__pycache__
 **/__pycache__

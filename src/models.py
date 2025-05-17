@@ -41,7 +41,7 @@ class TrafficLightLog(TrafficLight):
 
 
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, Dict
 from bson import ObjectId
 from datetime import datetime
 
@@ -91,6 +91,8 @@ class Device(BaseModel):
     status: str = "Active"  # Active or Inactive
     ip_address: Optional[str] = None
     location_details: Optional[str] = None
+    direction_from: Optional[str] = None
+    direction_to: Optional[str] = None
     
     class Config:
         allow_population_by_field_name = True
@@ -107,6 +109,24 @@ class Device(BaseModel):
                 "location_details": "North Intersection"
             }
         }
+        
+class AggregatedVehicleCount(BaseModel):
+    # id: Optional[str] = Field(None, alias="_id") # MongoDB tự tạo _id
+    deviceID: str
+    timefrom: datetime
+    timeto: datetime
+    direction_from: str # ex: North, South, East, West
+    direction_to: str # ex: North, South, East, West
+    total_count: int = Field(..., alias="totalCount") # Tổng số xe tích lũy
+    counts_by_class: Dict[str, int] = Field(..., alias="countsByClass") # Số lượng theo từng loại xe
+    fps: Optional[float] = None
+
+    class Config:
+        allow_population_by_field_name = True # Cho phép dùng alias khi tạo instance
+        json_encoders = {
+            datetime: lambda dt: dt.isoformat()
+        }
+        # orm_mode = True # Nếu bạn lấy từ DB và muốn dùng thuộc tính model trực tiếp
 
 # class VehicleCount(BaseModel):
 #     id: Optional[str] = Field(alias="id", default=None)
@@ -145,3 +165,9 @@ class Device(BaseModel):
 #         allow_population_by_field_name = True
 #         arbitrary_types_allowed = True
 #         json_encoders = {ObjectId: str}
+
+class CreateCameraRequest(BaseModel):
+    device_id: str
+    stream_url: str
+    direction_from: str
+    direction_to: str

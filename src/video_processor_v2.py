@@ -10,25 +10,20 @@ import json
 import os
 from config import settings
 from database import get_database
-from models import VehicleCount
+from models import VehicleCount, AggregatedVehicleCount
 import torch
 
 class VideoProcessor:
-    def __init__(self, stream_port: int = 8081):
+    def __init__(self,device_id, input_video_stream, direction_from, direction_to, is_tracking=False, stream_port: int = 8081):
         """Initialize the video processor with YOLO model and ByteTrack"""
         self.base_dir = os.path.dirname(os.path.abspath(__file__))
         model_path = os.path.join(self.base_dir, 'yolov8n.pt')
         self.model = YOLO(model_path)
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        print(f"Using device: {device}")
         self.model.to(device)
 
         # --- Class Information ---
-        # Lấy danh sách tên lớp từ mô hình YOLO
         self.class_names = dict(self.model.names)
-        # print("Class name",type(self.class_names))
-        # Các lớp được coi là phương tiện giao thông (có thể tùy chỉnh dựa trên model của bạn)
-        # Kiểm tra xem các class_id này có tồn tại trong self.class_names không
         self.vehicle_class_ids = {
             k for k, v in self.class_names.items()
             if v in ['car', 'motorcycle', 'bus', 'truck', 'bicycle'] # Thêm 'bicycle' nếu cần
@@ -75,27 +70,12 @@ class VideoProcessor:
         self.frame_lock = asyncio.Lock()
         self.cap = None
         self.stream_port = stream_port
-        self.stream_url = None
+        self.stream_url = input_video_stream
         self.db = get_database()
-
-    def detect_image(self, frame):
-        frame = cv2.resize(frame, (settings.frame_width, settings.frame_height))
-        results = \
-        self.model(frame, conf=settings.conf_thresh, iou=settings.iou_thresh, classes=list(self.vehicle_class_ids),
-                   verbose=False)[0]
-        detections = sv.Detections.from_ultralytics(results)
-
-        annotated_frame = frame.copy()
-
-        if len(detections) > 0:
-            for xyxy, confidence, class_id in zip(detections.xyxy, detections.confidence, detections.class_id):
-                if class_id in self.class_names:
-                    label = f"{self.class_names[class_id]} {confidence:0.2f}"
-                    cv2.rectangle(annotated_frame, (int(xyxy[0]), int(xyxy[1])), (int(xyxy[2]), int(xyxy[3])),
-                                  (0, 255, 0), 2)
-                    cv2.putText(annotated_frame, label, (int(xyxy[0]), int(xyxy[1]) - 10),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
-        return annotated_frame
+        self.deviceid = device_id
+        self.direction_from = direction_from
+        self.direction_to = direction_to
+        self.is_tracking = is_tracking
 
     def set_counting_line(self, start: Tuple[int, int], end: Tuple[int, int]):
         """Set up the counting line."""
@@ -109,11 +89,8 @@ class VideoProcessor:
             start=sv.Point(start[0], start[1]),
             end=sv.Point(end[0], end[1])
         )
-        # Chúng ta vẫn dùng LineZoneAnnotator để vẽ đường kẻ
         self.line_zone_annotator = sv.LineZoneAnnotator(thickness=2, text_thickness=0, text_scale=0)
         print(f"Counting line set at Y = {self.line_y}")
-        # Reset bộ đếm và danh sách ID đã qua khi đặt lại đường kẻ
-        self.reset_counts()
 
     def reset_counts(self):
         """Resets the counters and the set of crossed IDs."""
@@ -124,9 +101,7 @@ class VideoProcessor:
             'fps': self.fps # Giữ lại giá trị fps hiện tại
         }
         self.crossed_down_ids = set()
-        # Reset cả bộ đếm nội bộ của LineZone nếu muốn hiển thị của nó cũng reset
         if self.line_zone:
-             # Không có phương thức reset công khai, tạo lại nếu cần
              start_pt = self.line_zone.vector.start
              end_pt = self.line_zone.vector.end
              self.line_zone = sv.LineZone(start=start_pt, end=end_pt)
@@ -136,29 +111,23 @@ class VideoProcessor:
         if frame is None or self.line_y is None: # Cần có đường kẻ mới xử lý
             return None
 
-        frame = cv2.resize(frame, (settings.frame_width, settings.frame_height))
+        frame = cv2.resize(frame, (settings.frame_width2, settings.frame_height2))
         results = self.model(frame, conf=settings.conf_thresh, iou=settings.iou_thresh, classes=list(self.vehicle_class_ids), verbose=False)[0]
         detections = sv.Detections.from_ultralytics(results)
 
-        # Chỉ theo dõi các phương tiện đã được lọc
         detections = self.tracker.update_with_detections(detections)
 
         annotated_frame = frame.copy()
 
-        # --- Logic đếm mới ---
         current_crossed_ids_in_frame = set()
         if len(detections) > 0 and detections.tracker_id is not None:
             for xyxy, confidence, class_id, tracker_id in zip(detections.xyxy, detections.confidence, detections.class_id, detections.tracker_id):
-                if tracker_id is None: # Bỏ qua nếu không có tracker_id
+                if tracker_id is None:
                     continue
 
-                # Lấy tâm dưới của bounding box làm điểm tham chiếu
                 anchor_point_y = int(xyxy[3])
 
-                # Kiểm tra xem xe có đi từ trên xuống dưới qua vạch không
-                # Điều kiện: Tâm dưới của xe VƯỢT QUA vạch (y > line_y) VÀ tracker_id này CHƯA được đếm
                 if anchor_point_y > self.line_y and tracker_id not in self.crossed_down_ids:
-                    # Kiểm tra class_id có hợp lệ và là phương tiện không
                     if class_id in self.vehicle_class_ids and class_id in self.class_names:
                         class_name = self.class_names[class_id]
                         self.counts['down_by_class'][class_name] += 1
@@ -168,8 +137,7 @@ class VideoProcessor:
                         current_crossed_ids_in_frame.add(tracker_id) # Đánh dấu ID vừa qua trong frame này
                         print(f"Vehicle crossed down: ID {tracker_id}, Type: {class_name}, Total Down: {self.counts['total_down']}") # Log
                     else:
-                         # Log nếu class_id không hợp lệ hoặc không phải vehicle
-                         # print(f"Ignoring cross for ID {tracker_id}, Class ID {class_id} (Valid vehicles: {self.vehicle_class_ids})")
+                         print(f"Ignoring cross for ID {tracker_id}, Class ID {class_id} (Valid vehicles: {self.vehicle_class_ids})")
                          pass
 
 
@@ -215,72 +183,44 @@ class VideoProcessor:
         # Hiển thị số đếm từng loại
         start_y = 90
         for i, (class_name, count) in enumerate(self.counts['down_by_class'].items()):
-             # Chỉ hiển thị nếu count > 0 hoặc để hiển thị tất cả
-             # if count > 0:
              text = f"- {class_name}: {count}"
              cv2.putText(annotated_frame, text, (15, start_y + i * 25),
                          cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 0), 2)
 
 
-        # --- Lưu trữ định kỳ ---
         current_time_db = time.time()
-        # Lưu history (có thể giữ nguyên hoặc bỏ nếu không cần history chi tiết)
-        # if current_time_db - self.last_count_time >= self.count_interval:
-        #     self.count_history.append({
-        #         'timestamp': datetime.now().isoformat(),
-        #         'counts': self.counts.copy() # Lưu bản sao của dict hiện tại
-        #     })
-        #     self.last_count_time = current_time_db
-            # Keep only last 1000 entries in history
-            # if len(self.count_history) > 1000:
-            #     self.count_history = self.count_history[-1000:]
 
         # Lưu vào DB
         if current_time_db - self.last_db_save_time >= self.db_save_interval:
-            await self._save_to_database()
+            await self._save_to_database(datetime.fromtimestamp(current_time_db))
             self.last_db_save_time = current_time_db
 
         return annotated_frame
 
-    async def _save_to_database(self):
-        """Save current counts per vehicle type to database."""
-        print(f"Saving counts to database at {datetime.now().isoformat()}...")
-        saved_items = 0
+    async def _save_to_database(self, current_time: datetime):
+        """Save current aggregated counts to database."""
+        data_to_save = AggregatedVehicleCount(
+            deviceID=self.deviceid,
+            timefrom=datetime.fromtimestamp(self.last_count_time),
+            timeto=current_time,
+            direction_from=self.direction_from,
+            direction_to=self.direction_to,# Giả sử chỉ có hướng "down" từ code hiện tại
+            totalCount=self.counts.get('total_down', 0), # Sử dụng alias
+            countsByClass=self.counts.get('down_by_class', {}), # Sử dụng alias
+            fps=self.counts.get('fps', 0.0)
+        )
+
         try:
-            timestamp = datetime.now()
-            for class_name, count in self.counts['down_by_class'].items():
-                # Chỉ lưu nếu có sự thay đổi hoặc luôn lưu giá trị hiện tại?
-                # Để đơn giản, luôn lưu giá trị hiện tại của các loại xe đã đếm được > 0
-                # Hoặc có thể lưu tất cả loại xe, kể cả count = 0
-                # if count > 0: # Chỉ lưu nếu có đếm
-                vehicle_count_data = VehicleCount(
-                    count=count,
-                    timestamp=timestamp,
-                    vehicle_type=class_name,
-                    direction="down" # Chỉ lưu hướng đi xuống
-                )
-                await self.db.save_vehicle_count(vehicle_count_data)
-                saved_items += 1
-
-            # Lưu tổng số lượng (tùy chọn)
-            total_count_data = VehicleCount(
-                count=self.counts['total_down'],
-                timestamp=timestamp,
-                vehicle_type="all_down", # Loại đặc biệt cho tổng số đi xuống
-                direction="down"
-            )
-            await self.db.save_vehicle_count(total_count_data)
-            saved_items += 1
-
-            print(f"Successfully saved {saved_items} count records to database.")
+            await self.db.save_aggregated_vehicle_count(data_to_save)
+            self.reset_counts()
+            print(f"Successfully saved aggregated count record to database for device {self.deviceid}.")
 
         except Exception as e:
-            print(f"Error saving to database: {e}")
+            print(f"Error saving aggregated count to database for device {self.deviceid}: {e}")
 
-    # Hàm start_stream, _process_stream, get_frame, generate_frames giữ nguyên
-    async def start_stream(self, stream_url: str):
+    async def start_stream(self):
         """Start processing video stream"""
-        self.stream_url = stream_url
+
         try:
             # Reset counts khi bắt đầu stream mới
             self.reset_counts()
@@ -293,12 +233,12 @@ class VideoProcessor:
                  self.set_counting_line(default_start, default_end)
 
 
-            self.cap = cv2.VideoCapture(stream_url)
+            self.cap = cv2.VideoCapture(self.stream_url)
             if not self.cap.isOpened():
-                raise Exception(f"Could not open video stream: {stream_url}")
+                raise Exception(f"Could not open video stream: {self.stream_url}")
 
             self.is_running = True
-            print(f"Started processing stream: {stream_url}")
+            print(f"Started processing stream: {self.stream_url}")
             asyncio.create_task(self._process_stream())
 
         except Exception as e:
@@ -348,18 +288,15 @@ class VideoProcessor:
                 ret, frame = self.cap.read()
 
                 if not ret:
-                    # Xử lý khi kết thúc stream hoặc lỗi đọc frame
                     print("End of stream or cannot read frame. Checking stream type...")
-                    # Kiểm tra xem đây là file hay stream
                     is_file = not (self.stream_url and (self.stream_url.startswith(('http://', 'https://', 'rtsp://')) or self.stream_url.isdigit()))
 
                     if is_file:
                         print("End of video file reached. Resetting to beginning.")
                         self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-                        # self.reset_counts() # Reset bộ đếm khi quay lại đầu file
                         await asyncio.sleep(0.1) # Chờ chút trước khi đọc lại
                         continue
-                    else: # Là stream (IP cam, web stream)
+                    else:
                         print("Stream ended or connection lost. Attempting to reopen...")
                         if self.cap:
                             self.cap.release()
@@ -368,24 +305,21 @@ class VideoProcessor:
                         await asyncio.sleep(2) # Chờ trước khi thử mở lại
                         continue
 
-                # --- Xử lý frame ---
-                processed_frame = await self.process_frame(frame)
+                if self.is_tracking:
+                    processed_frame = await self.process_frame(frame)
+                else:
+                    processed_frame = frame
+                    current_time_db = time.time()
+                    if current_time_db - self.last_db_save_time >= self.db_save_interval:
+                        await self._save_to_database(datetime.fromtimestamp(current_time_db))
+                        self.last_db_save_time = current_time_db
 
-                # --- Cập nhật frame hiện tại ---
                 if processed_frame is not None:
                     async with self.frame_lock:
                         self.current_frame = processed_frame
                 else:
-                    # Nếu process_frame trả về None (ví dụ chưa set line), giữ frame cũ hoặc xóa
-                    # async with self.frame_lock:
-                    #    self.current_frame = None # Hoặc giữ frame gốc: self.current_frame = frame
                     pass
 
-
-                # --- Delay nhỏ ---
-                # Có thể điều chỉnh delay này. 0.001 gần như không delay.
-                # Tăng lên nếu CPU quá tải, giảm nếu muốn FPS cao hơn (nhưng tốn CPU).
-                # await asyncio.sleep(1 / (settings.fps * 1.5)) # Ví dụ: target 1.5 lần FPS setting
                 await asyncio.sleep(0.01) # Delay cố định nhỏ
 
             except Exception as e:
@@ -393,9 +327,7 @@ class VideoProcessor:
                 if current_time - last_error_time > error_throttle_period:
                      print(f"Error processing stream: {e} ({type(e).__name__})")
                      last_error_time = current_time
-                # Cân nhắc dừng hẳn nếu lỗi nghiêm trọng lặp lại
-                # self.is_running = False
-                await asyncio.sleep(2) # Chờ một chút trước khi tiếp tục vòng lặp
+                await asyncio.sleep(2)
 
         # --- Cleanup khi vòng lặp kết thúc ---
         print("Stream processing loop finished.")
@@ -436,23 +368,16 @@ class VideoProcessor:
                            frame_bytes + b'\r\n')
                 except Exception as e:
                      print(f"Error yielding frame bytes: {e}")
-                     # Có thể cần xử lý client bị ngắt kết nối ở đây nếu lỗi là do gửi
-                     # break # Thoát nếu không thể gửi được nữa
-
-            # Điều chỉnh tốc độ gửi frame, không nên gửi nhanh hơn tốc độ xử lý
-            # await asyncio.sleep(1 / (self.fps + 1)) # Dựa vào FPS hiện tại
-            await asyncio.sleep(1/30)  # Gửi tối đa 30 FPS hoặc chậm hơn nếu xử lý không kịp
+            await asyncio.sleep(1/30)
 
 
     def stop(self):
         """Stop the video processing"""
         print("Stopping VideoProcessor...")
         self.is_running = False
-        # Không cần release cap ở đây vì _process_stream sẽ làm điều đó trong finally
 
     def get_counts(self) -> dict:
         """Get current counting statistics (new structure)"""
-        # Đảm bảo trả về bản sao để tránh sửa đổi từ bên ngoài
         return self.counts.copy()
 
     def get_count_history(self) -> List[dict]:
@@ -462,22 +387,19 @@ class VideoProcessor:
 
     def get_stream_url(self) -> str:
         """Get the URL for accessing the processed video stream"""
-        # Cần đảm bảo host là đúng nếu chạy trong container hoặc mạng khác
-        # Có thể lấy host từ request hoặc config
-        host = "localhost" # Hoặc settings.SERVICE_HOST
+        host = "localhost"
         return f"http://{host}:{self.stream_port}/stream.mjpg"
 
 
 if __name__ == "__main__":
     # Test VideoProcessor
-    video_processor = VideoProcessor()
     image_path = "D:\CUPRUM\PTIT\Term_8\Embedded_System_Development\BE_AI\image_test\\testtyty.png"
-
-    image = cv2.imread(image_path)
-    if image is None:
-        print("Error: Could not read the image.")
-    else:
-        processed_image = video_processor.detect_image(image)
-        cv2.imshow("Processed Image", processed_image)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+    #
+    # image = cv2.imread(image_path)
+    # if image is None:
+    #     print("Error: Could not read the image.")
+    # else:
+    #     processed_image = video_processor.detect_image(image)
+    #     cv2.imshow("Processed Image", processed_image)
+    #     cv2.waitKey(0)
+    #     cv2.destroyAllWindows()
