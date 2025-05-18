@@ -67,7 +67,7 @@ class Road(BaseModel):
     district: str
     city: str
     status: str = "Active"  # Active or Inactive
-    
+    mode: str = "Auto"
     class Config:
         allow_population_by_field_name = True
         arbitrary_types_allowed = True

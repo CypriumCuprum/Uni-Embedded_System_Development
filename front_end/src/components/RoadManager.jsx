@@ -14,7 +14,8 @@ const RoadManager = () => {
         location: '',
         district: '',
         city: '',
-        status: 'Active'
+        status: 'Active',
+        mode: 'Auto'
     });
 
     useEffect(() => {

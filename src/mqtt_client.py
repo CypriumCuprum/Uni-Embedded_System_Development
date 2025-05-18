@@ -61,7 +61,7 @@ async def handle_sub_message(topic, message,websocket: WebSocketManager):
                 timestamp=datetime.utcnow()
             )
             await _db.save_traffic_light_log(trafficLightLog)
-            print("Traffic light log saved:", trafficLightLog)
+            # print("Traffic light log saved:", trafficLightLog)
     except Exception as e:
         print("Error handling MQTT message:", e)
 
@@ -147,7 +147,7 @@ class MQTTClient:
         road, color, timeDuration, content = message.split(",")
         if(content not in ["ON", "OFF"]):
             dem[road] = int(content)
-            print("đếm với topic", road, "thời gian còn lại", dem[road])
+            # print("đếm với topic", road, "thời gian còn lại", dem[road])
 
 
         asyncio.run_coroutine_threadsafe(

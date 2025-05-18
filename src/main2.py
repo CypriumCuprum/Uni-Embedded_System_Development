@@ -105,11 +105,18 @@ async def startup_event():
     except Exception as e:
         print(f"Error initializing roads: {e}")
 
+    _db = get_database()
+    roads = await _db.get_all_roads()
+    for road in roads:
+        if(road["mode"] == "Auto"):
+            await road_manager.invoke_auto_control(road["id"], mqtt_client)
+        else:
+            await road_manager.invoke_manual_control(road["id"])
 
 @app.post("/roads/{road_id}/auto", summary="Kích hoạt chế độ tự động cho nút giao")
 async def set_road_auto_control(road_id: str):
     try:
-        await road_manager.invoke_auto_control(road_id)
+        await road_manager.invoke_auto_control(road_id, mqtt_client)
         return {"message": f"Auto control successfully invoked for road ID {road_id}."}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -285,7 +292,7 @@ async def create_road(road: Road, db: Database = Depends(get_db)):
     road_dict = road.dict(exclude={"id"})
     # Remove any None values for MongoDB
     road_dict = {k: v for k, v in road_dict.items() if v is not None}
-    
+    print(road)
     # Create the road
     created_road = await db.create_road(road_dict)
     return created_road

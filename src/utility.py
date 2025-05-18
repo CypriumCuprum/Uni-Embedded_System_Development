@@ -6,7 +6,8 @@ from datetime import datetime  # Đã có trong Database
 # Import lớp Database và hàm get_database từ file của bạn
 # Giả sử file database.py nằm cùng cấp hoặc trong PYTHONPATH
 from database import Database, get_database
-
+from mqtt_client import MQTTClient
+from config import settings
 # Giả sử bạn có models.py định nghĩa các Pydantic models
 # from models import Road # Nếu bạn có Pydantic model cho Road
 
@@ -85,7 +86,7 @@ class FullRoad:
             logger.error(f"Road [{self.road_name} ({self.road_id})]: Lỗi khi lấy flow rates: {e}", exc_info=True)
             return 0.0, 0.0  # Trả về 0 nếu có lỗi
 
-    async def _calculate_and_apply_lights(self):
+    async def _calculate_and_apply_lights(self, mqtt_client: MQTTClient):
         flow_ns, flow_ew = await self._get_flow_rates()
 
         cycle_time, green_time_ns, green_time_ew = calculate_cycle_and_green_times_2_phase(
@@ -97,11 +98,22 @@ class FullRoad:
             f"Road [{self.road_name} ({self.road_id})]: Chu kỳ mới: C={cycle_time}s, G_NS={green_time_ns}s, G_EW={green_time_ew}s")
 
         # TODO: Gửi thông tin chu kỳ và thời gian xanh đến thiết bị đèn thực tế
+        yellow_time_ns = 3
+        red_time_ns = cycle_time - yellow_time_ns - green_time_ns
+        
+        yellow_time_ew = yellow_time_ns
+        red_time_ew = yellow_time_ns + green_time_ns
+        green_time_ew = cycle_time - red_time_ew - yellow_time_ew
+
+        message1 = f"1,{green_time_ns*1000},{yellow_time_ns*1000},{red_time_ns*1000}"
+        message2 = f"2,{green_time_ew*1000},{yellow_time_ew*1000},{red_time_ew*1000}"
+        mqtt_client.publish(settings.mqtt_topic_pub, message1)
+        mqtt_client.publish(settings.mqtt_topic_pub, message2)
 
         logger.info(f"Road [{self.road_name} ({self.road_id})]: Áp dụng (giả lập) cấu hình đèn mới.")
         return cycle_time  # Trả về chu kỳ để biết sleep bao lâu
 
-    async def start_auto_control(self):
+    async def start_auto_control(self, mqtt_client: MQTTClient):
         if not self.is_auto_control_lights:
             logger.warning(
                 f"Road [{self.road_name} ({self.road_id})]: start_auto_control được gọi nhưng is_auto_control_lights là False.")
@@ -110,7 +122,7 @@ class FullRoad:
         logger.info(f"Road [{self.road_name} ({self.road_id})]: Bắt đầu chế độ tự động.")
         try:
             while self.is_auto_control_lights:
-                cycle_time = await self._calculate_and_apply_lights()
+                cycle_time = await self._calculate_and_apply_lights(mqtt_client)
 
                 sleep_duration = max(10.0, float(cycle_time))  # Ngủ ít nhất 10s, hoặc theo chu kỳ
                 logger.info(
@@ -171,7 +183,7 @@ class RoadManager:
             logger.error(f"RoadManager: Lỗi nghiêm trọng khi khởi tạo các nút giao: {e}", exc_info=True)
             # Tùy thuộc vào ứng dụng, bạn có thể muốn raise lỗi này để dừng khởi động FastAPI
 
-    async def invoke_auto_control(self, road_id: str):
+    async def invoke_auto_control(self, road_id: str, mqtt_client: MQTTClient):
         if road_id not in self.dict_road:
             logger.error(f"RoadManager: Không tìm thấy road_id: {road_id} để kích hoạt tự động.")
             raise ValueError(f"Road ID {road_id} not found.")  # Sẽ thành HTTPException trong FastAPI
@@ -193,8 +205,8 @@ class RoadManager:
 
         road_obj.is_auto_control_lights = True  # Đặt cờ TRƯỚC KHI tạo task mới
         logger.info(f"RoadManager: Kích hoạt chế độ điều khiển tự động cho {road_obj.road_name} ({road_id}).")
-        road_obj._auto_control_task = asyncio.create_task(road_obj.start_auto_control())
-
+        await self.db.change_mode_road(road_id=road_id, newMode="Auto")
+        road_obj._auto_control_task = asyncio.create_task(road_obj.start_auto_control(mqtt_client))
     async def invoke_manual_control(self, road_id: str):
         if road_id not in self.dict_road:
             logger.error(f"RoadManager: Không tìm thấy road_id: {road_id} để kích hoạt thủ công.")
@@ -209,6 +221,7 @@ class RoadManager:
 
         logger.info(
             f"RoadManager: Kích hoạt chế độ điều khiển thủ công cho {road_obj.road_name} ({road_id}). Dừng chế độ tự động...")
+        await self.db.change_mode_road(road_id, "Manual")
         road_obj.request_stop_auto_control()
 
         if road_obj._auto_control_task:
