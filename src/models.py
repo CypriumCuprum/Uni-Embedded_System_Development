@@ -110,6 +110,9 @@ class Device(BaseModel):
             }
         }
         
+class RoadResponse(Road):
+    devices: List[Device] = Field(default_factory=list)
+
 class AggregatedVehicleCount(BaseModel):
     # id: Optional[str] = Field(None, alias="_id") # MongoDB tự tạo _id
     deviceID: str
