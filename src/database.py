@@ -135,6 +135,14 @@ class Database:
             updated_road["id"] = str(updated_road["_id"])
             return updated_road
         return None
+        
+    async def change_mode_road(self, road_id: str, newMode: str) -> None:
+        from bson import ObjectId
+        await self.roads.update_one(
+            {"_id": ObjectId(road_id)},
+            {"$set": {"mode": newMode}}
+        )
+        print("update mode " + road_id + " " + newMode)
     
     async def delete_road(self, road_id: str) -> bool:
         from bson import ObjectId

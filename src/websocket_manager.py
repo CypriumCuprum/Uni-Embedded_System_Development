@@ -18,7 +18,7 @@ class WebSocketManager:
             return
         for connection in self.active_connections:
             try:
-                print("check connections")
+                # print("check connections")
                 await connection.send_json(message)
             except Exception as e:
                 print(f"Error broadcasting to client: {e}")

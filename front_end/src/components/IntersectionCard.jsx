@@ -10,7 +10,7 @@ const IntersectionCard = ({ feed }) => {
     const [totalDown, setTotalDown] = useState('N/A');
     const [fps, setFps] = useState('N/A');
     const [downByClass, setDownByClass] = useState([]);
-    const [isAutoMode, setIsAutoMode] = useState(true);
+    const [isAutoMode, setIsAutoMode] = useState(feed.mode === 'Auto'? true : false);
     const [cycleDuration, setCycleDuration] = useState(0); // Default cycle duration in seconds
     const [pendingCycleDuration, setPendingCycleDuration] = useState(10);
     const [cycleUpdatePending, setCycleUpdatePending] = useState(false);
@@ -166,8 +166,25 @@ const IntersectionCard = ({ feed }) => {
     },[])
     // console.log('light', light);
 
-    const handleModeToggle = () => {
-        setIsAutoMode((prev) => !prev);
+    const handleModeToggle = async () => {
+        const newMode = !isAutoMode;
+        setIsAutoMode(newMode);
+        const endpoint = newMode
+        ? `${server_url}/roads/${feed.id}/auto`
+        : `${server_url}/roads/${feed.id}/manual`;
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+            });
+
+            if (!response.ok) {
+                console.error('Failed to toggle mode:', response.statusText);
+            } else {
+                console.log(`Mode successfully set to ${newMode ? 'auto' : 'manual'}`);
+            }
+        } catch (error) {
+            console.error('Error toggling mode:', error);
+        }
     };
 
     const handleInputChange = (e) => {
