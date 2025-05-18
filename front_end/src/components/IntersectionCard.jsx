@@ -229,13 +229,24 @@ const IntersectionCard = ({ feed }) => {
                 >
                     {cameras.map(camera => {
                     let matchedLight = null;
-                    if (parseInt(camera.device_id) % 2 === 1) {
+                    let cameraDirection = camera.direction_from;
+                    // if (parseInt(camera.device_id) % 2 === 1) {
+                    //     matchedLight = light1;
+                    // } else if (parseInt(camera.device_id) % 2 === 0) {
+                    //     matchedLight = light2;
+                    // }
+                    if (cameraDirection === 'North' || cameraDirection === 'South') {
                         matchedLight = light1;
-                    } else if (parseInt(camera.device_id) % 2 === 0) {
+                    } else if (cameraDirection === 'East' || cameraDirection === 'West') {
                         matchedLight = light2;
                     }
 
                     return (
+                        <div>
+                            <div className="camera-label">
+                            <Label sx={{ fontSize: 14 }} color='primary'  />
+                            {camera.direction_from} - {camera.direction_to}
+                                </div>
                         <div className="camera-feed" key={camera.device_id}   style={{ width: '220px', height: '300px' }}>
                         <div className="camera-image-container"     style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
                             <img
@@ -244,8 +255,11 @@ const IntersectionCard = ({ feed }) => {
                             className="camera-image"
                                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                             />
-                        </div>
+                            
+                        </div>  
+                        
                         <TrafficLight light={matchedLight} />
+                        </div>
                         </div>
                     );
                     })}
