@@ -69,8 +69,9 @@ const DeviceManager = () => {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify(formData),
+              
             });
-
+            console.log(formData);
             if (response.ok) {
                 console.log(await response.json())
                 setShowAddModal(false);
@@ -93,7 +94,9 @@ const DeviceManager = () => {
             type: device.type,
             status: device.status,
             ip_address: device.ip_address || '',
-            location_details: device.location_details || ''
+            location_details: device.location_details || '',
+            direction_from: device.direction_from || '',
+            direction_to: device.direction_to || '',
         });
         setShowEditModal(true);
     };
@@ -452,6 +455,7 @@ const DeviceManager = () => {
                                     <option value="traffic_light">Đèn giao thông</option>
                                 </select>
                             </div>
+                            {renderDirectionFields()}
                             <div className="form-group">
                                 <label htmlFor="edit-ip_address">Địa chỉ IP:</label>
                                 <input

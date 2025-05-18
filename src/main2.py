@@ -5,8 +5,8 @@ from typing import List, Dict, Tuple
 import uvicorn
 from config import settings
 from database import Database, get_database
-from models import VehicleCount, AreaConfig, CountingLineConfig
-from src.models import CreateCameraRequest
+from models import RoadResponse, VehicleCount, AreaConfig, CountingLineConfig
+from models import CreateCameraRequest
 from video_processor_v2 import VideoProcessor
 from websocket_manager import WebSocketManager
 import asyncio
@@ -81,6 +81,11 @@ video_processor_manager = VideoProcessorManager()
 
 @app.on_event("startup")
 async def startup_event():
+    try:
+        mqtt_client.connect()
+    except:
+        print("MQTT connection failed. Please check your broker settings.")
+    # mqtt_client.publish(settings.mqtt_topic_pub, "30000;5000;20000")
     cameras_from_database = await get_database().get_all_cameras()
     cnt = 0
     for camera in cameras_from_database:
@@ -264,6 +269,11 @@ async def websocket_mqtt_endpoint(websocket: WebSocket):
                 mqtt_websocket_manager.list_channel.pop("mqtt2")
 
 # ========== Road Endpoints ==========
+
+@app.get("/api/roads/device/all", response_model=List[RoadResponse])
+async def list_roads(db: Database = Depends(get_db)):
+    roads = await db.get_all_roads_and_devices()
+    return roads
 
 @app.get("/api/roads", response_model=List[Road])
 async def list_roads(db: Database = Depends(get_db)):

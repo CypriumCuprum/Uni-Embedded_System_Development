@@ -95,6 +95,15 @@ class Database:
         )
         return result.modified_count > 0
 # Road operations
+    async def get_all_roads_and_devices(self) -> List[dict]:
+        cursor = self.roads.find()
+        roads = await cursor.to_list(length=100)
+        for road in roads:
+            road["id"] = str(road["_id"])
+            devices = await self.get_device_by_road_id(road["id"])
+            road["devices"] = devices
+        return roads
+
     async def get_all_roads(self) -> List[dict]:
         cursor = self.roads.find()
         roads = await cursor.to_list(length=100)

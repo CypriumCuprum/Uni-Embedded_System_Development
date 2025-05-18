@@ -1,50 +1,31 @@
 import './TrafficDashboard.css'; // Đảm bảo import file CSS vào
 import IntersectionCard from './IntersectionCard';
+import { useState, useEffect } from 'react';
 
 const TrafficDashboard = () => {
-    // Sample data for camera feeds at intersections
-    const intersectionFeeds = [
-        {
-            id: 1,
-            location: 'KHU VỰC MẶC ĐỊNH',
-            street: 'Hướng đường Thành Thái',
-            time: '09:06:29 14/11/2022',
-            area: 'HẺM 7A THÀNH THÁI',
-        },
-        // { id: 2, location: "KHU VỰC MẶC ĐỊNH", street: "Hướng đường Thành Thái", time: "09:54:08 14/11/2022", area: "HẺM 7A THÀNH THÁI" },
-        // { id: 3, location: "KHU VỰC MẶC ĐỊNH", street: "Hướng đường Thành Thái", time: "09:50:57 14/11/2022", area: "HẺM 7A THÀNH THÁI" },
-        // { id: 4, location: "KHU VỰC MẶC ĐỊNH", street: "Hướng đường Thành Thái", time: "09:45:09 14/11/2022", area: "HẺM 7A THÀNH THÁI" },
-        // { id: 5, location: "KHU VỰC MẶC ĐỊNH", street: "Hướng đường Thành Thái", time: "07:19:03 14/11/2022", area: "HẺM 7A THÀNH THÁI" },
-        // { id: 6, location: "KHU VỰC MẶC ĐỊNH", street: "Hướng đường Thành Thái", time: "07:18:42 14/11/2022", area: "HẺM 7A THÀNH THÁI" },
-    ];
+    const [roads, setRoads] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const server_url = "http://localhost:8080";
+
+    const fetchRoads = async () => {
+        try {
+            setLoading(true);
+            const response = await fetch(`${server_url}/api/roads/device/all`);
+            const data = await response.json();
+            setRoads(data);
+            setLoading(false);
+        } catch (error) {
+            console.error('Error fetching roads:', error);
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchRoads();
+    }, []);
 
     return (
         <div className="dashboard">
-            {/* Header */}
-            <header className="header">
-                {/* <div className="nav-items">
-                    <div className="nav-item active">Giao thông</div>
-                    <div className="nav-item">Dashboard</div>
-                    <div className="nav-item">Thiết bị</div>
-                    <div className="nav-item">Quản lý người dùng</div>
-                </div> */}
-                {/* <div className="header-actions">
-                    <button className="icon-button">
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="icon"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                        >
-                            <path
-                                fillRule="evenodd"
-                                d="M10 2a8 8 0 100 16 8 8 0 000-16zm0 14a6 6 0 100-12 6 6 0 000 12z"
-                                clipRule="evenodd"
-                            />
-                        </svg>
-                    </button>
-                </div> */}
-            </header>
 
             {/* Sub Header */}
             <div className="sub-header">
@@ -91,9 +72,14 @@ const TrafficDashboard = () => {
 
             {/* Camera Feeds Grid */}
             <div className="feeds-grid">
-                {intersectionFeeds.map((feed) => (
+                {loading ? (
+                    <p>Đang tải dữ liệu...</p>
+                ) : roads.length === 0 ? (
+                    <p>Không có dữ liệu đường giao thông.</p>
+                ) : (
+                roads.map((feed) => (
                     <IntersectionCard key={feed.id} feed={feed} />
-                ))}
+                )) )}
             </div>
         </div>
     );

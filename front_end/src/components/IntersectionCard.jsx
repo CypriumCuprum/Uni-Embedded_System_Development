@@ -6,6 +6,7 @@ import { Flare, Label } from '@mui/icons-material';
 
 // Individual intersection card with dual video feeds
 const IntersectionCard = ({ feed }) => {
+    const server_url = "http://localhost:8080";
     const [totalDown, setTotalDown] = useState('N/A');
     const [fps, setFps] = useState('N/A');
     const [downByClass, setDownByClass] = useState([]);
@@ -17,7 +18,22 @@ const IntersectionCard = ({ feed }) => {
     const [inputRed, setInputRed] = useState('');
     const [light1, setLight1] = useState({})
     const [light2, setLight2] = useState({})
+    const [cameras, setCameras] = useState([])
+    const [lights, setLights] = useState([])
+    const [devicePairs, setDevicePairs] = useState([]);
+
     useEffect(() => {
+        if (!feed?.devices) return;
+        const cam = feed.devices.filter(device => device.type === 'camera');
+        const lgt = feed.devices.filter(device => device.type === 'light');
+
+        setCameras(cam);
+        setLights(lgt);
+        
+    }, [feed]);
+
+    useEffect(() => {
+
         const wsUrl = `http://localhost:8080/ws/stats/1`;
         console.log(`Attempting to connect WebSocket to: ${wsUrl}`);
 
@@ -93,6 +109,13 @@ const IntersectionCard = ({ feed }) => {
                     messages.forEach(value => {
                         if(parseInt(value?.road) === 1){
                             setLight1(value);
+                        }
+                        const road = parseInt(value?.road);
+                        if (!isNaN(road)) {
+                            setLights(prevLights => ({
+                                ...prevLights,
+                                [road]: value
+                            }));
                         }
                     });
                 }
@@ -194,44 +217,50 @@ const IntersectionCard = ({ feed }) => {
             {/* Dual Camera Feed Images */}
             <div className="camera-feeds">
                 {/* First Camera Feed */}
-                <div className="camera-feed">
-                    <div className="camera-image-container">
-                        <img
-                            src="http://localhost:8080/stream1.mjpg"
-                            alt="Traffic camera view 1"
-                            className="camera-image"
-                        />
-                    </div>
-
-                    {/* Green bounding boxes overlay */}
-
-                    {/* Traffic Light Component for first view */}
-                    <TrafficLight light = {light1} />
-                </div>
-
-                {/* Second Camera Feed */}
-                <div className="camera-feed">
-                    <div className="camera-image-container">
-                        <img
-                            src="http://localhost:8080/stream2.mjpg"
-                            alt="Traffic camera view 2"
-                            className="camera-image"
-                        />
-                    </div>
-
-                    {/* Green bounding boxes overlay */}
-
-                    {/* Traffic Light Component for second view */}
-                    {
-                        console.log("light", light2)
+               {cameras.length !== 0 ? (
+                <div 
+                    className="camera-grid" 
+                    style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(2, 1fr)',  // 2 cột bằng nhau
+                    gap: '25px',  // khoảng cách giữa các camera
+                    padding: '10px'
+                    }}
+                >
+                    {cameras.map(camera => {
+                    let matchedLight = null;
+                    if (parseInt(camera.device_id) % 2 === 1) {
+                        matchedLight = light1;
+                    } else if (parseInt(camera.device_id) % 2 === 0) {
+                        matchedLight = light2;
                     }
-                    <TrafficLight light={light2} />
+
+                    return (
+                        <div className="camera-feed" key={camera.device_id}   style={{ width: '220px', height: '300px' }}>
+                        <div className="camera-image-container"     style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
+                            <img
+                            src={`${server_url}/api/devices/${camera.device_id}/stream.mjpg`}
+                            alt={`Traffic camera ${camera.device_id}`}
+                            className="camera-image"
+                                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            />
+                        </div>
+                        <TrafficLight light={matchedLight} />
+                        </div>
+                    );
+                    })}
                 </div>
+                ) : (
+                <div className="camera-feed text-center p-4 text-gray-500">
+                    <p className="text-lg">Không có thiết bị được kết nối</p>
+                </div>
+                )}
+
             </div>
 
             {/* Info Section - Common for both cameras in the intersection */}
             <div className="feed-info">
-                <div className="feed-location">{feed.location}</div>
+                <div className="feed-location">{feed.location} {feed.name}</div>
                 <div className="feed-detail">
                     <svg
                         xmlns="http://www.w3.org/2000/svg"
